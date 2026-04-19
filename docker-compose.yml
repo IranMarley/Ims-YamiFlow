@@ -90,6 +90,7 @@ services:
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
       Stripe__PlanMonthlyId: ${STRIPE_PLAN_MONTHLY_ID}
       Stripe__PlanAnnualId: ${STRIPE_PLAN_ANNUAL_ID}
+      Serilog__MinimumLevel: Debug
     depends_on:
       postgres:
         condition: service_healthy
