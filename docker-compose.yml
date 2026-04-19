@@ -85,12 +85,12 @@ services:
       Email__SmtpPort: ${SMTP_PORT:-587}
       Email__SmtpUser: ${SMTP_USER}
       Email__SmtpPass: ${SMTP_PASS}
-      Email__AppUrl: ${APP_URL}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY}
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
       Stripe__PlanMonthlyId: ${STRIPE_PLAN_MONTHLY_ID}
       Stripe__PlanAnnualId: ${STRIPE_PLAN_ANNUAL_ID}
       Serilog__MinimumLevel: Debug
+      AppUrl: ${APP_URL}
     depends_on:
       postgres:
         condition: service_healthy

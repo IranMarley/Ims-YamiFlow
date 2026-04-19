@@ -31,7 +31,7 @@ public class ResendConfirmationHandler(
         if (user is not null && !user.EmailConfirmed)
         {
             var token = await authUserService.GenerateEmailConfirmationTokenAsync(user.Id, ct);
-            var appUrl = config["Email:AppUrl"];
+            var appUrl = config["AppUrl"];
             var link = $"{appUrl}/confirm-email?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
 
             await emailService.SendAsync(

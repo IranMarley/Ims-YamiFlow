@@ -30,7 +30,7 @@ public class ForgotPasswordHandler(
         var token = await authUserService.GeneratePasswordResetTokenAsync(cmd.Email, ct);
         if (!string.IsNullOrEmpty(token))
         {
-            var appUrl = config["Email:AppUrl"];
+            var appUrl = config["AppUrl"];
             var link = $"{appUrl}/reset-password?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
 
             await emailService.SendAsync(

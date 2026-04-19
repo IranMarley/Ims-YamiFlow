@@ -9,5 +9,4 @@ public sealed class EmailOptions
     public int SmtpPort { get; init; } = 587;
     public string SmtpUser { get; init; } = string.Empty;
     public string SmtpPass { get; init; } = string.Empty;
-    public string AppUrl { get; init; } = string.Empty;
 }
