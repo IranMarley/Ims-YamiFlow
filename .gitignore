@@ -1,0 +1,46 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## Ignore web folder (frontend) - user requested
+/web/
+
+## Secrets
+appsettings.Production.json
+*secrets*
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Migrations (optional - remove if you want to commit migrations)
+# */Migrations/
+
+## Configuration files (local / user-specific)
+# Local ASP.NET Core settings (development overrides)
+appsettings*.json
+
+# Environment files
+.env
+.env.*
+
+# Local overrides
+*.local
+
+# User/IDE-specific settings
+*.DotSettings.user
+.vscode/
+
+# Generic config files that are often user-specific
+*.config
+
+# Docker override files (local)
+docker-compose.override.yml

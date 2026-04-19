@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@source "../views/**/*.{tsx,ts}";
+@source "../components/**/*.{tsx,ts}";
+@source "../hooks/**/*.ts";
+@source "../app/**/*.{tsx,ts}";
+
+@theme {
+  --color-primary: #7f5af0;
+  --color-primary-hover: #6b46e0;
+  --color-secondary: #666666;
+  --color-background: #16161a;
+  --color-surface: #242629;
+  --color-surface-hover: #2e3035;
+  --color-text: #fffffe;
+  --color-subtle: #94a1b2;
+  --color-border: #3a3d44;
+  --color-success: #2cb67d;
+  --color-warning: #f4c430;
+  --color-danger: #ef4565;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+
+  --animate-spin-slow: spin 1.5s linear infinite;
+  --animate-pulse-subtle: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-skeleton: shimmer 2s infinite linear;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #16161a;
+    color: #fffffe;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #16161a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3a3d44;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #7f5af0;
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #242629 25%,
+      #2e3035 50%,
+      #242629 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

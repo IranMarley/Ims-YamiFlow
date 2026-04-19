@@ -1,0 +1,51 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "",
+    "Redis": ""
+  },
+  "JwtSettings": {
+    "Secret": "",
+    "Issuer": "Ims.YamiFlow",
+    "Audience": "Ims.YamiFlow.Clients",
+    "ExpirationHours": 8,
+    "RefreshTokenExpirationDays": 30
+  },
+  "Authentication": {
+    "Google": {
+      "ClientId": "",
+      "ClientSecret": ""
+    },
+    "Facebook": {
+      "AppId": "",
+      "AppSecret": ""
+    }
+  },
+  "Email": {
+    "From": "",
+    "SmtpHost": "",
+    "SmtpPort": 587,
+    "SmtpUser": "",
+    "SmtpPass": ""
+  },
+  "Stripe": {
+    "SecretKey": "",
+    "PublishableKey": "",
+    "WebhookSecret": ""
+  },
+  "Cors": {
+    "Origins": [ "http://localhost:3000", "http://localhost:5173" ]
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.EntityFrameworkCore": "Warning"
+      }
+    },
+    "WriteTo": [
+      { "Name": "Console" }
+    ]
+  },
+  "AllowedHosts": "*"
+}

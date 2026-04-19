@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Ims.YamiFlow.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Audit.EntityFramework.Core" Version="25.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageReference Include="Dapper" Version="2.1.72" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.12.14" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.5" />
+    <PackageReference Include="Stripe.net" Version="47.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Ims.YamiFlow.Domain\Ims.YamiFlow.Domain.csproj" />
+    <ProjectReference Include="..\Ims.YamiFlow.Application\Ims.YamiFlow.Application.csproj" />
+  </ItemGroup>
+</Project>
