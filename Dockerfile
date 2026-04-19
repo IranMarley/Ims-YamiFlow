@@ -17,7 +17,7 @@ RUN dotnet publish src/Ims.YamiFlow.API/Ims.YamiFlow.API.csproj \
     -c Release -o /app
 
 # ── Runtime stage ──────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS runtime
 WORKDIR /app
 
 COPY --from=build /app .
