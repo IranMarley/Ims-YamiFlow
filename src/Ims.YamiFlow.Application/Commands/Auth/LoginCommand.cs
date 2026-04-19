@@ -84,6 +84,20 @@ public class LoginHandler(
             return Result.Failure<LoginResponse>("Account is deactivated.");
         }
 
+        if (!user.EmailConfirmed)
+        {
+            await authEventService.LogAsync(AuthEvent.Create(
+                AuthEventTypes.LoginFailed,
+                userId: user.Id,
+                email: cmd.Email,
+                success: false,
+                failureReason: "Email not confirmed",
+                ipAddress: cmd.IpAddress,
+                userAgent: cmd.UserAgent), ct);
+
+            return Result.Failure<LoginResponse>("Please confirm your email address before logging in.");
+        }
+
         var tokens = await tokenService.GenerateTokensAsync(user.Id);
         var roles = await authUserService.GetRolesAsync(user.Id, ct);
         var role = roles.FirstOrDefault() ?? "Student";

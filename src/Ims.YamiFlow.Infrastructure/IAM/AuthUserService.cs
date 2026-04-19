@@ -8,13 +8,13 @@ public class AuthUserService(UserManager<AppUser> userManager) : IAuthUserServic
     public async Task<AppUserDto?> FindByEmailAsync(string email, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
-        return user is null ? null : new AppUserDto(user.Id, user.Email!, user.FullName, user.IsActive);
+        return user is null ? null : new AppUserDto(user.Id, user.Email!, user.FullName, user.IsActive, user.EmailConfirmed);
     }
 
     public async Task<AppUserDto?> FindByIdAsync(string userId, CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId);
-        return user is null ? null : new AppUserDto(user.Id, user.Email!, user.FullName, user.IsActive);
+        return user is null ? null : new AppUserDto(user.Id, user.Email!, user.FullName, user.IsActive, user.EmailConfirmed);
     }
 
     public async Task<(bool Succeeded, string[] Errors)> CreateAsync(

@@ -115,13 +115,16 @@ public static class ServiceExtensions
         return services;
     }
 
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services, IConfiguration config)
     {
+        services.Configure<EmailOptions>(config.GetSection(EmailOptions.SectionName));
+
         // Services (Application / Domain)
         services.AddScoped<IAuthUserService, AuthUserService>();
         services.AddScoped<IIamService, IamService>();
         services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IEmailService, NoOpEmailService>();
+        services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<IAuthEventService, AuthEventService>();
 
         services.AddHttpContextAccessor();

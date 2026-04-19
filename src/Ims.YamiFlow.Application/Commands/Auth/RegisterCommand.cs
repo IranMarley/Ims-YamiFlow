@@ -1,6 +1,8 @@
 using FluentValidation;
+using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
@@ -37,7 +39,8 @@ public class RegisterValidator : AbstractValidator<RegisterCommand>
 // ── Handler ───────────────────────────────────────────
 public class RegisterHandler(
     IAuthUserService authUserService,
-    IEmailService emailService)
+    IEmailService emailService,
+    IConfiguration config)
     : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
 {
     public async Task<Result<RegisterResponse>> Handle(RegisterCommand cmd, CancellationToken ct)
@@ -53,11 +56,14 @@ public class RegisterHandler(
         var created = await authUserService.FindByEmailAsync(cmd.Email, ct);
         await authUserService.AddToRoleAsync(created!.Id, "Student", ct);
 
-        var confirmToken = await authUserService.GenerateEmailConfirmationTokenAsync(created.Id, ct);
+        var token = await authUserService.GenerateEmailConfirmationTokenAsync(created.Id, ct);
+        var appUrl = config["Email:AppUrl"];
+        var link = $"{appUrl}/confirm-email?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
+
         await emailService.SendAsync(
             cmd.Email,
             "Confirm your email — YamiFlow",
-            $"Use this token to confirm your email: {confirmToken}",
+            EmailTemplates.ConfirmEmail(cmd.FullName, link),
             ct);
 
         return Result.Success(new RegisterResponse(created.Id, created.Email, cmd.FullName));

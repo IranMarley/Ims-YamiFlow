@@ -1,6 +1,8 @@
 using FluentValidation;
+using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
@@ -19,7 +21,8 @@ public class ForgotPasswordValidator : AbstractValidator<ForgotPasswordCommand>
 // ── Handler ───────────────────────────────────────────
 public class ForgotPasswordHandler(
     IAuthUserService authUserService,
-    IEmailService emailService)
+    IEmailService emailService,
+    IConfiguration config)
     : IRequestHandler<ForgotPasswordCommand, Result>
 {
     public async Task<Result> Handle(ForgotPasswordCommand cmd, CancellationToken ct)
@@ -28,10 +31,13 @@ public class ForgotPasswordHandler(
         var token = await authUserService.GeneratePasswordResetTokenAsync(cmd.Email, ct);
         if (!string.IsNullOrEmpty(token))
         {
+            var appUrl = config["Email:AppUrl"];
+            var link = $"{appUrl}/reset-password?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
+
             await emailService.SendAsync(
                 cmd.Email,
                 "Reset your password — YamiFlow",
-                $"Use this token to reset your password: {token}",
+                EmailTemplates.ResetPassword(link),
                 ct);
         }
 

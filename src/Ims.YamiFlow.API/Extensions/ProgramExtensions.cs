@@ -18,7 +18,7 @@ public static class ProgramExtensions
             .AddJwtAuthentication(builder.Configuration)
             .AddDynamicAuthorization()
             .AddApplicationServices()
-            .AddInfrastructureServices()
+            .AddInfrastructureServices(builder.Configuration)
             .AddStripeIntegration(builder.Configuration)
             .AddCacheServices(builder.Configuration)
             .AddRateLimitingConfig()
