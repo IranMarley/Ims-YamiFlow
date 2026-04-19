@@ -1,7 +1,6 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Reviews;
 
@@ -21,7 +20,7 @@ public record CreateReviewCommand(
     string StudentId,
     int Rating,
     string Comment
-) : IRequest<Result<ReviewResponse>>;
+);
 
 public class CreateReviewValidator : AbstractValidator<CreateReviewCommand>
 {
@@ -38,7 +37,7 @@ public class CreateReviewHandler(
     IReviewRepository reviewRepository,
     IEnrollmentRepository enrollmentRepository,
     IUnitOfWork uow)
-    : IRequestHandler<CreateReviewCommand, Result<ReviewResponse>>
+    : IHandler<CreateReviewCommand, Result<ReviewResponse>>
 {
     public async Task<Result<ReviewResponse>> Handle(CreateReviewCommand cmd, CancellationToken ct)
     {
@@ -68,7 +67,7 @@ public record UpdateReviewCommand(
     string StudentId,
     int Rating,
     string Comment
-) : IRequest<Result>;
+);
 
 public class UpdateReviewValidator : AbstractValidator<UpdateReviewCommand>
 {
@@ -82,7 +81,7 @@ public class UpdateReviewValidator : AbstractValidator<UpdateReviewCommand>
 }
 
 public class UpdateReviewHandler(IReviewRepository reviewRepository, IUnitOfWork uow)
-    : IRequestHandler<UpdateReviewCommand, Result>
+    : IHandler<UpdateReviewCommand, Result>
 {
     public async Task<Result> Handle(UpdateReviewCommand cmd, CancellationToken ct)
     {
@@ -100,7 +99,7 @@ public class UpdateReviewHandler(IReviewRepository reviewRepository, IUnitOfWork
 }
 
 // ── DeleteReviewCommand ───────────────────────────────
-public record DeleteReviewCommand(Guid ReviewId, string StudentId) : IRequest<Result>;
+public record DeleteReviewCommand(Guid ReviewId, string StudentId);
 
 public class DeleteReviewValidator : AbstractValidator<DeleteReviewCommand>
 {
@@ -112,7 +111,7 @@ public class DeleteReviewValidator : AbstractValidator<DeleteReviewCommand>
 }
 
 public class DeleteReviewHandler(IReviewRepository reviewRepository, IUnitOfWork uow)
-    : IRequestHandler<DeleteReviewCommand, Result>
+    : IHandler<DeleteReviewCommand, Result>
 {
     public async Task<Result> Handle(DeleteReviewCommand cmd, CancellationToken ct)
     {

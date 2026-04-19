@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Affiliates;
 
@@ -11,11 +10,11 @@ public record AffiliateStats(
 );
 
 // ── Query ─────────────────────────────────────────────
-public record GetAffiliateStatsQuery(string UserId) : IRequest<Result<AffiliateStats>>;
+public record GetAffiliateStatsQuery(string UserId);
 
 // ── Handler ───────────────────────────────────────────
 public class GetAffiliateStatsHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetAffiliateStatsQuery, Result<AffiliateStats>>
+    : IHandler<GetAffiliateStatsQuery, Result<AffiliateStats>>
 {
     public Task<Result<AffiliateStats>> Handle(GetAffiliateStatsQuery q, CancellationToken ct)
     {

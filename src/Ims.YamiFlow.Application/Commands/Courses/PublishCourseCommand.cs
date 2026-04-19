@@ -1,11 +1,10 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Courses;
 
-public record PublishCourseCommand(Guid CourseId, string InstructorId) : IRequest<Result>;
+public record PublishCourseCommand(Guid CourseId, string InstructorId);
 
 public class PublishCourseHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<PublishCourseCommand, Result>
+    : IHandler<PublishCourseCommand, Result>
 {
     public async Task<Result> Handle(PublishCourseCommand cmd, CancellationToken ct)
     {

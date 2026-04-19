@@ -1,7 +1,6 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 using Microsoft.Extensions.Configuration;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
@@ -11,7 +10,7 @@ public record RegisterCommand(
     string FullName,
     string Email,
     string Password
-) : IRequest<Result<RegisterResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record RegisterResponse(string UserId, string Email, string FullName);
@@ -41,7 +40,7 @@ public class RegisterHandler(
     IAuthUserService authUserService,
     IEmailService emailService,
     IConfiguration config)
-    : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
+    : IHandler<RegisterCommand, Result<RegisterResponse>>
 {
     public async Task<Result<RegisterResponse>> Handle(RegisterCommand cmd, CancellationToken ct)
     {

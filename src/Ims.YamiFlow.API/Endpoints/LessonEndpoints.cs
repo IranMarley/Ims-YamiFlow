@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Lessons;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Domain.Enums;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -18,9 +17,9 @@ public static class LessonEndpoints
 
         crud.MapPost("/", async (
             Guid courseId, Guid moduleId, [FromBody] AddLessonRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            AddLessonHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new AddLessonCommand(
+            var result = await handler.Handle(new AddLessonCommand(
                 courseId, moduleId, user.FindFirstValue(ClaimTypes.NameIdentifier)!,
                 req.Title, req.Type, req.DurationSeconds, req.Order, req.ContentUrl, req.IsFreePreview), ct);
             return result.IsSuccess
@@ -32,9 +31,9 @@ public static class LessonEndpoints
 
         crud.MapPut("/{lessonId:guid}", async (
             Guid courseId, Guid moduleId, Guid lessonId, [FromBody] UpdateLessonRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            UpdateLessonHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new UpdateLessonCommand(
+            var result = await handler.Handle(new UpdateLessonCommand(
                 courseId, moduleId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!,
                 req.Title, req.Type, req.DurationSeconds, req.ContentUrl, req.IsFreePreview), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
@@ -44,9 +43,9 @@ public static class LessonEndpoints
 
         crud.MapDelete("/{lessonId:guid}", async (
             Guid courseId, Guid moduleId, Guid lessonId,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            DeleteLessonHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new DeleteLessonCommand(
+            var result = await handler.Handle(new DeleteLessonCommand(
                 courseId, moduleId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
         })
@@ -55,10 +54,10 @@ public static class LessonEndpoints
 
         crud.MapPut("/reorder", async (
             Guid courseId, Guid moduleId, [FromBody] ReorderLessonsRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            ReorderLessonsHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var items = req.Items.Select(i => new LessonOrderItem(i.LessonId, i.Order)).ToList();
-            var result = await mediator.Send(new ReorderLessonsCommand(
+            var result = await handler.Handle(new ReorderLessonsCommand(
                 courseId, moduleId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, items), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
@@ -72,9 +71,9 @@ public static class LessonEndpoints
 
         progress.MapPost("/complete", async (
             Guid enrollmentId, Guid lessonId,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            CompleteLessonHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new CompleteLessonCommand(
+            var result = await handler.Handle(new CompleteLessonCommand(
                 enrollmentId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
@@ -87,9 +86,9 @@ public static class LessonEndpoints
 
         progress.MapPost("/progress", async (
             Guid enrollmentId, Guid lessonId, [FromBody] SaveProgressRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            SaveProgressHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new SaveProgressCommand(
+            var result = await handler.Handle(new SaveProgressCommand(
                 enrollmentId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.WatchedSeconds), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })

@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Subscriptions;
 
@@ -16,12 +15,12 @@ public record SubscriptionDetail(
     DateTime? TrialEnd,
     bool GrantsAccess);
 
-public record GetCurrentSubscriptionQuery(string UserId) : IRequest<Result<SubscriptionDetail?>>;
+public record GetCurrentSubscriptionQuery(string UserId);
 
 public class GetCurrentSubscriptionHandler(
     ISubscriptionRepository subscriptions,
     ISubscriptionPlanRepository plans)
-    : IRequestHandler<GetCurrentSubscriptionQuery, Result<SubscriptionDetail?>>
+    : IHandler<GetCurrentSubscriptionQuery, Result<SubscriptionDetail?>>
 {
     public async Task<Result<SubscriptionDetail?>> Handle(
         GetCurrentSubscriptionQuery q, CancellationToken ct)

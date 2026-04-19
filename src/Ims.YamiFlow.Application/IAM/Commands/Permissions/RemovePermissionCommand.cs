@@ -1,12 +1,11 @@
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.IAM.Commands.Permissions;
 
-public record RemovePermissionCommand(string RoleId, string Resource, string Operation) : IRequest<Result>;
+public record RemovePermissionCommand(string RoleId, string Resource, string Operation);
 
-public class RemovePermissionHandler(IIamService iamService) : IRequestHandler<RemovePermissionCommand, Result>
+public class RemovePermissionHandler(IIamService iamService) : IHandler<RemovePermissionCommand, Result>
 {
     public async Task<Result> Handle(RemovePermissionCommand cmd, CancellationToken ct)
     {

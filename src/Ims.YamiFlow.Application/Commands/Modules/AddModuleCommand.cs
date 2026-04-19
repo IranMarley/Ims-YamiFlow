@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Modules;
 
@@ -9,7 +8,7 @@ public record AddModuleCommand(
     string InstructorId,
     string Title,
     int Order
-) : IRequest<Result<AddModuleResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record AddModuleResponse(Guid ModuleId, string Title, int Order);
@@ -27,7 +26,7 @@ public class AddModuleValidator : AbstractValidator<AddModuleCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class AddModuleHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<AddModuleCommand, Result<AddModuleResponse>>
+    : IHandler<AddModuleCommand, Result<AddModuleResponse>>
 {
     public async Task<Result<AddModuleResponse>> Handle(AddModuleCommand cmd, CancellationToken ct)
     {

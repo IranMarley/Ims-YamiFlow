@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Payments;
-using MediatR;
 
 namespace Ims.YamiFlow.API.Endpoints;
 
@@ -17,12 +16,12 @@ public static class PaymentEndpoints
         group.MapGet("/history", async (
             int page,
             int pageSize,
-            IMediator mediator,
+            GetPaymentHistoryHandler handler,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            return Results.Ok(await mediator.Send(new GetPaymentHistoryQuery(userId, page, pageSize), ct));
+            return Results.Ok(await handler.Handle(new GetPaymentHistoryQuery(userId, page, pageSize), ct));
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Payment, Operations.Read))
         .WithName("GetPaymentHistory");

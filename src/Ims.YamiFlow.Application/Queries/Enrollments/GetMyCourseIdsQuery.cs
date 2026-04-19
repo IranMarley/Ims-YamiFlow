@@ -1,12 +1,11 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Enrollments;
 
-public record GetMyCourseIdsQuery(string StudentId) : IRequest<IReadOnlyList<Guid>>;
+public record GetMyCourseIdsQuery(string StudentId);
 
 public class GetMyCourseIdsHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetMyCourseIdsQuery, IReadOnlyList<Guid>>
+    : IHandler<GetMyCourseIdsQuery, IReadOnlyList<Guid>>
 {
     public async Task<IReadOnlyList<Guid>> Handle(GetMyCourseIdsQuery q, CancellationToken ct)
     {

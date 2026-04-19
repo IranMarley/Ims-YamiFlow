@@ -1,11 +1,10 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 // ── Command ───────────────────────────────────────────
-public record UpdateProfileCommand(string UserId, string FullName) : IRequest<Result<UpdateProfileResponse>>;
+public record UpdateProfileCommand(string UserId, string FullName);
 
 // ── Response ──────────────────────────────────────────
 public record UpdateProfileResponse(string UserId, string FullName, string Email);
@@ -24,7 +23,7 @@ public class UpdateProfileValidator : AbstractValidator<UpdateProfileCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class UpdateProfileHandler(IAuthUserService authUserService)
-    : IRequestHandler<UpdateProfileCommand, Result<UpdateProfileResponse>>
+    : IHandler<UpdateProfileCommand, Result<UpdateProfileResponse>>
 {
     public async Task<Result<UpdateProfileResponse>> Handle(UpdateProfileCommand cmd, CancellationToken ct)
     {

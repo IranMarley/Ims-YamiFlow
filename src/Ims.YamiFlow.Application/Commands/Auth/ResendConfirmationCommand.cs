@@ -1,13 +1,12 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 using Microsoft.Extensions.Configuration;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 // ── Command ───────────────────────────────────────────
-public record ResendConfirmationCommand(string Email) : IRequest<Result>;
+public record ResendConfirmationCommand(string Email);
 
 // ── Validator ─────────────────────────────────────────
 public class ResendConfirmationValidator : AbstractValidator<ResendConfirmationCommand>
@@ -23,7 +22,7 @@ public class ResendConfirmationHandler(
     IAuthUserService authUserService,
     IEmailService emailService,
     IConfiguration config)
-    : IRequestHandler<ResendConfirmationCommand, Result>
+    : IHandler<ResendConfirmationCommand, Result>
 {
     public async Task<Result> Handle(ResendConfirmationCommand cmd, CancellationToken ct)
     {

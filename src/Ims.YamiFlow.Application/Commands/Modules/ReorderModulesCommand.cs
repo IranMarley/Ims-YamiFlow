@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Modules;
 
@@ -9,7 +8,7 @@ public record ReorderModulesCommand(
     Guid CourseId,
     string InstructorId,
     IReadOnlyList<ModuleOrderItem> Items
-) : IRequest<Result>;
+);
 
 public class ReorderModulesValidator : AbstractValidator<ReorderModulesCommand>
 {
@@ -20,7 +19,7 @@ public class ReorderModulesValidator : AbstractValidator<ReorderModulesCommand>
 }
 
 public class ReorderModulesHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<ReorderModulesCommand, Result>
+    : IHandler<ReorderModulesCommand, Result>
 {
     public async Task<Result> Handle(ReorderModulesCommand cmd, CancellationToken ct)
     {

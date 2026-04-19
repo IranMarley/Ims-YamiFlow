@@ -1,7 +1,6 @@
 using Ims.YamiFlow.Application.Commands.Admin;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Admin;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -12,26 +11,26 @@ public static class AdminEndpoints
     {
         var group = app.MapGroup("/api/admin").WithTags(Resources.User);
 
-        group.MapGet("/stats", async (IMediator mediator, CancellationToken ct) =>
+        group.MapGet("/stats", async (GetAdminStatsHandler handler, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new GetAdminStatsQuery(), ct);
+            var result = await handler.Handle(new GetAdminStatsQuery(), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Read))
         .WithName("GetAdminStats");
 
-        group.MapGet("/users", async (string? search, int page, int pageSize, IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new ListUsersQuery(search, page, pageSize), ct)))
+        group.MapGet("/users", async (string? search, int page, int pageSize, ListUsersHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.Handle(new ListUsersQuery(search, page, pageSize), ct)))
         .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Read))
         .WithName("ListUsers");
 
         group.MapPut("/users/{userId}", async (
             string userId,
             [FromBody] UpdateUserRequest req,
-            IMediator mediator,
+            UpdateUserByAdminHandler handler,
             CancellationToken ct) =>
         {
-            var result = await mediator.Send(new UpdateUserByAdminCommand(userId, req.FullName, req.Role), ct);
+            var result = await handler.Handle(new UpdateUserByAdminCommand(userId, req.FullName, req.Role), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Update))
@@ -40,10 +39,10 @@ public static class AdminEndpoints
         group.MapPost("/users/{userId}/toggle-status", async (
             string userId,
             ToggleUserStatusRequest req,
-            IMediator mediator,
+            ToggleUserStatusHandler handler,
             CancellationToken ct) =>
         {
-            var result = await mediator.Send(new ToggleUserStatusCommand(userId, req.IsActive), ct);
+            var result = await handler.Handle(new ToggleUserStatusCommand(userId, req.IsActive), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Update))

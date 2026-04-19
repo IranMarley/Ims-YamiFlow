@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Certificates;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Certificates;
-using MediatR;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -16,9 +15,9 @@ public static class CertificateEndpoints
             .WithTags(Resources.Certificate);
 
         issue.MapPost("/", async (
-            Guid enrollmentId, IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            Guid enrollmentId, IssueCertificateHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new IssueCertificateCommand(
+            var result = await handler.Handle(new IssueCertificateCommand(
                 enrollmentId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
@@ -29,9 +28,9 @@ public static class CertificateEndpoints
             .MapGroup("/api/certificates")
             .WithTags(Resources.Certificate);
 
-        verify.MapGet("/{code}/verify", async (string code, IMediator mediator, CancellationToken ct) =>
+        verify.MapGet("/{code}/verify", async (string code, VerifyCertificateHandler handler, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new VerifyCertificateQuery(code), ct);
+            var result = await handler.Handle(new VerifyCertificateQuery(code), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
         })
         .AllowAnonymous()

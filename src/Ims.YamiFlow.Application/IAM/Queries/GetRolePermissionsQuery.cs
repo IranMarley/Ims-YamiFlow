@@ -1,15 +1,14 @@
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.IAM.Queries;
 
-public record GetRolePermissionsQuery(string RoleId) : IRequest<Result<List<PermissionItem>>>;
+public record GetRolePermissionsQuery(string RoleId);
 
 public record PermissionItem(string Resource, string Operation);
 
 public class GetRolePermissionsHandler(IIamService iamService)
-    : IRequestHandler<GetRolePermissionsQuery, Result<List<PermissionItem>>>
+    : IHandler<GetRolePermissionsQuery, Result<List<PermissionItem>>>
 {
     public async Task<Result<List<PermissionItem>>> Handle(GetRolePermissionsQuery q, CancellationToken ct)
     {

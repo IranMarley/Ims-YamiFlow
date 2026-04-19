@@ -1,11 +1,10 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Admin;
 
 // ── Command ───────────────────────────────────────────
-public record ToggleUserStatusCommand(string UserId, bool IsActive) : IRequest<Result>;
+public record ToggleUserStatusCommand(string UserId, bool IsActive);
 
 public class ToggleUserStatusValidator : AbstractValidator<ToggleUserStatusCommand>
 {
@@ -16,7 +15,7 @@ public class ToggleUserStatusValidator : AbstractValidator<ToggleUserStatusComma
 }
 
 public class ToggleUserStatusHandler(IAuthUserService authUserService)
-    : IRequestHandler<ToggleUserStatusCommand, Result>
+    : IHandler<ToggleUserStatusCommand, Result>
 {
     public async Task<Result> Handle(ToggleUserStatusCommand cmd, CancellationToken ct)
     {

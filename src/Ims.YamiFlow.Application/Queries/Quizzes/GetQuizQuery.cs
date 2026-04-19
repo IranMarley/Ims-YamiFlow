@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Quizzes;
 
@@ -13,11 +12,11 @@ public record QuizDetail(
 );
 
 // ── Query ─────────────────────────────────────────────
-public record GetQuizQuery(Guid QuizId) : IRequest<Result<QuizDetail>>;
+public record GetQuizQuery(Guid QuizId);
 
 // ── Handler ───────────────────────────────────────────
 public class GetQuizHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetQuizQuery, Result<QuizDetail>>
+    : IHandler<GetQuizQuery, Result<QuizDetail>>
 {
     public Task<Result<QuizDetail>> Handle(GetQuizQuery q, CancellationToken ct)
     {

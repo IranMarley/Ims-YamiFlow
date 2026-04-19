@@ -2,11 +2,10 @@ using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.IAM.Commands.Permissions;
 
-public record AddPermissionCommand(string RoleId, string Resource, string Operation) : IRequest<Result>;
+public record AddPermissionCommand(string RoleId, string Resource, string Operation);
 
 public class AddPermissionValidator : AbstractValidator<AddPermissionCommand>
 {
@@ -24,7 +23,7 @@ public class AddPermissionValidator : AbstractValidator<AddPermissionCommand>
     }
 }
 
-public class AddPermissionHandler(IIamService iamService) : IRequestHandler<AddPermissionCommand, Result>
+public class AddPermissionHandler(IIamService iamService) : IHandler<AddPermissionCommand, Result>
 {
     public async Task<Result> Handle(AddPermissionCommand cmd, CancellationToken ct)
     {

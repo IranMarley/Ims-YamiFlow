@@ -1,6 +1,5 @@
 using System.Text;
 using FluentValidation;
-using Ims.YamiFlow.Application.Behaviors;
 using Ims.YamiFlow.Application.Commands.Auth;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
@@ -104,11 +103,17 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddMediatR(cfg =>
+        // Register all IHandler<,> implementations from the Application assembly as scoped services.
+        // Each endpoint lambda injects its specific handler type directly — no dispatcher needed.
+        var appAssembly = typeof(RegisterCommand).Assembly;
+        foreach (var type in appAssembly.GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface
+                && t.GetInterfaces().Any(i =>
+                    i.IsGenericType
+                    && i.GetGenericTypeDefinition() == typeof(Ims.YamiFlow.Application.Common.IHandler<,>))))
         {
-            cfg.RegisterServicesFromAssembly(typeof(RegisterCommand).Assembly);
-            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-        });
+            services.AddScoped(type);
+        }
 
         services.AddValidatorsFromAssemblyContaining<RegisterValidator>();
 

@@ -1,13 +1,12 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
-public record RefreshTokenCommand(string RefreshToken) : IRequest<Result<RefreshTokenResponse>>;
+public record RefreshTokenCommand(string RefreshToken);
 
 public record RefreshTokenResponse(string AccessToken, string RefreshToken, DateTime ExpiresAt);
 
 public class RefreshTokenHandler(ITokenService tokenService)
-    : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
+    : IHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {
     public async Task<Result<RefreshTokenResponse>> Handle(RefreshTokenCommand cmd, CancellationToken ct)
     {

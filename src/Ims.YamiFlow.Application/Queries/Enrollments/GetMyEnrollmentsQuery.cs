@@ -1,11 +1,9 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Enrollments;
 
 // ── Query ─────────────────────────────────────────────
-public record GetMyEnrollmentsQuery(string StudentId, int Page = 1, int PageSize = 10)
-    : IRequest<PagedResult<EnrollmentItem>>, IPaginatedQuery;
+public record GetMyEnrollmentsQuery(string StudentId, int Page = 1, int PageSize = 10) : IPaginatedQuery;
 
 // ── Response ──────────────────────────────────────────
 public record EnrollmentItem(
@@ -24,7 +22,7 @@ public record EnrollmentItem(
 
 // ── Handler ───────────────────────────────────────────
 public class GetMyEnrollmentsHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetMyEnrollmentsQuery, PagedResult<EnrollmentItem>>
+    : IHandler<GetMyEnrollmentsQuery, PagedResult<EnrollmentItem>>
 {
     public async Task<PagedResult<EnrollmentItem>> Handle(GetMyEnrollmentsQuery q, CancellationToken ct)
     {

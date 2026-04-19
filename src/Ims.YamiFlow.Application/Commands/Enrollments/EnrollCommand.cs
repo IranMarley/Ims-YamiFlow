@@ -2,7 +2,6 @@ using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Enrollments;
 
@@ -13,7 +12,7 @@ public record EnrollCommand(
     string StudentId,
     Guid CourseId,
     string? CouponCode
-) : IRequest<Result<EnrollResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record EnrollResponse(
@@ -47,7 +46,7 @@ public class EnrollHandler(
     ICourseRepository courseRepository,
     IEnrollmentRepository enrollmentRepository,
     IUnitOfWork uow)
-    : IRequestHandler<EnrollCommand, Result<EnrollResponse>>
+    : IHandler<EnrollCommand, Result<EnrollResponse>>
 {
     public async Task<Result<EnrollResponse>> Handle(EnrollCommand cmd, CancellationToken ct)
     {

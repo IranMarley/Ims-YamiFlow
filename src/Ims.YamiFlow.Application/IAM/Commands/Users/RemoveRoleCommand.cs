@@ -1,12 +1,11 @@
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.IAM.Commands.Users;
 
-public record RemoveRoleCommand(string UserId, string RoleName) : IRequest<Result>;
+public record RemoveRoleCommand(string UserId, string RoleName);
 
-public class RemoveRoleHandler(IIamService iamService) : IRequestHandler<RemoveRoleCommand, Result>
+public class RemoveRoleHandler(IIamService iamService) : IHandler<RemoveRoleCommand, Result>
 {
     public async Task<Result> Handle(RemoveRoleCommand cmd, CancellationToken ct)
     {

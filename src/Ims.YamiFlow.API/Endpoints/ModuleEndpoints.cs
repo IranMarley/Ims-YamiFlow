@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Modules;
 using Ims.YamiFlow.Application.IAM.Constants;
-using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -15,9 +14,9 @@ public static class ModuleEndpoints
 
         group.MapPost("/", async (
             Guid courseId, [FromBody] AddModuleRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            AddModuleHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new AddModuleCommand(
+            var result = await handler.Handle(new AddModuleCommand(
                 courseId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.Title, req.Order), ct);
             return result.IsSuccess
                 ? Results.Created($"/api/courses/{courseId}/modules/{result.Value!.ModuleId}", result.Value)
@@ -28,9 +27,9 @@ public static class ModuleEndpoints
 
         group.MapPut("/{moduleId:guid}", async (
             Guid courseId, Guid moduleId, [FromBody] UpdateModuleRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            UpdateModuleHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new UpdateModuleCommand(
+            var result = await handler.Handle(new UpdateModuleCommand(
                 courseId, moduleId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.Title), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
@@ -39,9 +38,9 @@ public static class ModuleEndpoints
 
         group.MapDelete("/{moduleId:guid}", async (
             Guid courseId, Guid moduleId,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            DeleteModuleHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new DeleteModuleCommand(
+            var result = await handler.Handle(new DeleteModuleCommand(
                 courseId, moduleId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
         })
@@ -50,10 +49,10 @@ public static class ModuleEndpoints
 
         group.MapPut("/reorder", async (
             Guid courseId, [FromBody] ReorderModulesRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            ReorderModulesHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var items = req.Items.Select(i => new ModuleOrderItem(i.ModuleId, i.Order)).ToList();
-            var result = await mediator.Send(new ReorderModulesCommand(
+            var result = await handler.Handle(new ReorderModulesCommand(
                 courseId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, items), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })

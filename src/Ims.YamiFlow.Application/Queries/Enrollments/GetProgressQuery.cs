@@ -1,11 +1,10 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Enrollments;
 
 // ── Query ─────────────────────────────────────────────
 public record GetProgressQuery(Guid EnrollmentId, string StudentId)
-    : IRequest<Result<ProgressResponse>>;
+   ;
 
 // ── Response ──────────────────────────────────────────
 public record LessonProgressItem(
@@ -28,7 +27,7 @@ public record ProgressResponse(
 
 // ── Handler ───────────────────────────────────────────
 public class GetProgressHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetProgressQuery, Result<ProgressResponse>>
+    : IHandler<GetProgressQuery, Result<ProgressResponse>>
 {
     public async Task<Result<ProgressResponse>> Handle(GetProgressQuery q, CancellationToken ct)
     {

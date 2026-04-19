@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Quizzes;
 
@@ -17,7 +16,7 @@ public record QuizResultResponse(
 );
 
 // ── CreateQuizCommand ─────────────────────────────────
-public record CreateQuizCommand(Guid LessonId, string Title) : IRequest<Result<QuizResponse>>;
+public record CreateQuizCommand(Guid LessonId, string Title);
 
 public class CreateQuizValidator : AbstractValidator<CreateQuizCommand>
 {
@@ -28,7 +27,7 @@ public class CreateQuizValidator : AbstractValidator<CreateQuizCommand>
     }
 }
 
-public class CreateQuizHandler : IRequestHandler<CreateQuizCommand, Result<QuizResponse>>
+public class CreateQuizHandler : IHandler<CreateQuizCommand, Result<QuizResponse>>
 {
     public Task<Result<QuizResponse>> Handle(CreateQuizCommand cmd, CancellationToken ct)
     {
@@ -39,7 +38,7 @@ public class CreateQuizHandler : IRequestHandler<CreateQuizCommand, Result<QuizR
 }
 
 // ── DeleteQuizCommand ─────────────────────────────────
-public record DeleteQuizCommand(Guid QuizId, string InstructorId) : IRequest<Result>;
+public record DeleteQuizCommand(Guid QuizId, string InstructorId);
 
 public class DeleteQuizValidator : AbstractValidator<DeleteQuizCommand>
 {
@@ -50,7 +49,7 @@ public class DeleteQuizValidator : AbstractValidator<DeleteQuizCommand>
     }
 }
 
-public class DeleteQuizHandler : IRequestHandler<DeleteQuizCommand, Result>
+public class DeleteQuizHandler : IHandler<DeleteQuizCommand, Result>
 {
     public Task<Result> Handle(DeleteQuizCommand cmd, CancellationToken ct)
     {
@@ -65,7 +64,7 @@ public record AddQuestionCommand(
     string Text,
     string[] Options,
     int CorrectIndex
-) : IRequest<Result<QuestionResponse>>;
+);
 
 public class AddQuestionValidator : AbstractValidator<AddQuestionCommand>
 {
@@ -78,7 +77,7 @@ public class AddQuestionValidator : AbstractValidator<AddQuestionCommand>
     }
 }
 
-public class AddQuestionHandler : IRequestHandler<AddQuestionCommand, Result<QuestionResponse>>
+public class AddQuestionHandler : IHandler<AddQuestionCommand, Result<QuestionResponse>>
 {
     public Task<Result<QuestionResponse>> Handle(AddQuestionCommand cmd, CancellationToken ct)
     {
@@ -99,7 +98,7 @@ public record SubmitQuizCommand(
     Guid QuizId,
     string StudentId,
     int[] Answers
-) : IRequest<Result<QuizResultResponse>>;
+);
 
 public class SubmitQuizValidator : AbstractValidator<SubmitQuizCommand>
 {
@@ -111,7 +110,7 @@ public class SubmitQuizValidator : AbstractValidator<SubmitQuizCommand>
     }
 }
 
-public class SubmitQuizHandler : IRequestHandler<SubmitQuizCommand, Result<QuizResultResponse>>
+public class SubmitQuizHandler : IHandler<SubmitQuizCommand, Result<QuizResultResponse>>
 {
     public Task<Result<QuizResultResponse>> Handle(SubmitQuizCommand cmd, CancellationToken ct)
     {

@@ -1,11 +1,10 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.IAM.Commands.Roles;
 
-public record CreateRoleCommand(string Name, string Description) : IRequest<Result>;
+public record CreateRoleCommand(string Name, string Description);
 
 public class CreateRoleValidator : AbstractValidator<CreateRoleCommand>
 {
@@ -16,7 +15,7 @@ public class CreateRoleValidator : AbstractValidator<CreateRoleCommand>
     }
 }
 
-public class CreateRoleHandler(IIamService iamService) : IRequestHandler<CreateRoleCommand, Result>
+public class CreateRoleHandler(IIamService iamService) : IHandler<CreateRoleCommand, Result>
 {
     public async Task<Result> Handle(CreateRoleCommand cmd, CancellationToken ct)
     {

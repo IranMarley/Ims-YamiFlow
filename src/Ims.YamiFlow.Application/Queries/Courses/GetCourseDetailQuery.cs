@@ -1,10 +1,9 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Courses;
 
 // ── Query ─────────────────────────────────────────────
-public record GetCourseDetailQuery(Guid CourseId) : IRequest<Result<CourseDetailResponse>>;
+public record GetCourseDetailQuery(Guid CourseId);
 
 // ── Response ──────────────────────────────────────────
 public record LessonDetail(
@@ -76,7 +75,7 @@ file sealed class LessonRow
 
 // ── Handler ───────────────────────────────────────────
 public class GetCourseDetailHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetCourseDetailQuery, Result<CourseDetailResponse>>
+    : IHandler<GetCourseDetailQuery, Result<CourseDetailResponse>>
 {
     public async Task<Result<CourseDetailResponse>> Handle(GetCourseDetailQuery q, CancellationToken ct)
     {

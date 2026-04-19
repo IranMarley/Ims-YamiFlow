@@ -2,7 +2,6 @@ using FluentValidation;
 using Ims.YamiFlow.Domain.Constants;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
@@ -10,7 +9,7 @@ public record LoginCommand(
     string Email,
     string Password,
     string? IpAddress,
-    string? UserAgent) : IRequest<Result<LoginResponse>>;
+    string? UserAgent);
 
 public record LoginResponse(
     string UserId,
@@ -34,7 +33,7 @@ public class LoginHandler(
     IAuthUserService authUserService,
     ITokenService tokenService,
     IAuthEventService authEventService)
-    : IRequestHandler<LoginCommand, Result<LoginResponse>>
+    : IHandler<LoginCommand, Result<LoginResponse>>
 {
     public async Task<Result<LoginResponse>> Handle(LoginCommand cmd, CancellationToken ct)
     {

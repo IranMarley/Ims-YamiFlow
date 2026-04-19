@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Lessons;
 
@@ -14,7 +13,7 @@ public record AddLessonCommand(
     int Order,
     string? ContentUrl,
     bool IsFreePreview
-) : IRequest<Result<AddLessonResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record AddLessonResponse(Guid LessonId, string Title, int Order);
@@ -32,7 +31,7 @@ public class AddLessonValidator : AbstractValidator<AddLessonCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class AddLessonHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<AddLessonCommand, Result<AddLessonResponse>>
+    : IHandler<AddLessonCommand, Result<AddLessonResponse>>
 {
     public async Task<Result<AddLessonResponse>> Handle(AddLessonCommand cmd, CancellationToken ct)
     {

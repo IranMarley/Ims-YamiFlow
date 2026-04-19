@@ -1,5 +1,6 @@
 using Ims.YamiFlow.API.Endpoints;
 using Ims.YamiFlow.API.Endpoints.IAM;
+using Ims.YamiFlow.API.Filters;
 
 namespace Ims.YamiFlow.API.Extensions;
 
@@ -7,60 +8,65 @@ public static class EndpointExtensions
 {
     public static void MapAllEndpoints(this IEndpointRouteBuilder app)
     {
+        // Route all endpoints through the ValidationFilter so FluentValidation
+        // runs automatically on bound request objects — replacing the old MediatR
+        // ValidationBehavior pipeline.
+        var api = app.MapGroup("").AddEndpointFilter<ValidationFilter>();
+
         // ── Auth ──────────────────────────────────────
-        AuthEndpoints.Map(app);
+        AuthEndpoints.Map(api);
 
         // ── IAM ───────────────────────────────────────
-        RoleEndpoints.Map(app);
-        PermissionEndpoints.Map(app);
-        UserEndpoints.Map(app);
+        RoleEndpoints.Map(api);
+        PermissionEndpoints.Map(api);
+        UserEndpoints.Map(api);
 
         // ── Courses ───────────────────────────────────
-        CourseEndpoints.Map(app);
+        CourseEndpoints.Map(api);
 
         // ── Modules ───────────────────────────────────
-        ModuleEndpoints.Map(app);
+        ModuleEndpoints.Map(api);
 
         // ── Lessons ───────────────────────────────────
-        LessonEndpoints.Map(app);
+        LessonEndpoints.Map(api);
 
         // ── Enrollments ───────────────────────────────
-        EnrollmentEndpoints.Map(app);
+        EnrollmentEndpoints.Map(api);
 
         // ── Certificates ──────────────────────────────
-        CertificateEndpoints.Map(app);
+        CertificateEndpoints.Map(api);
 
         // ── Reviews ───────────────────────────────────
-        ReviewEndpoints.Map(app);
+        ReviewEndpoints.Map(api);
 
         // ── Quizzes ───────────────────────────────────
-        QuizEndpoints.Map(app);
+        QuizEndpoints.Map(api);
 
         // ── Coupons ───────────────────────────────────
-        CouponEndpoints.Map(app);
+        CouponEndpoints.Map(api);
 
         // ── Notifications ─────────────────────────────
-        NotificationEndpoints.Map(app);
+        NotificationEndpoints.Map(api);
 
         // ── Payments ──────────────────────────────────
-        PaymentEndpoints.Map(app);
+        PaymentEndpoints.Map(api);
 
         // ── Admin ─────────────────────────────────────
-        AdminEndpoints.Map(app);
+        AdminEndpoints.Map(api);
 
         // ── Forum ─────────────────────────────────────
-        ForumEndpoints.Map(app);
+        ForumEndpoints.Map(api);
 
         // ── Instructor ────────────────────────────────
-        InstructorEndpoints.Map(app);
+        InstructorEndpoints.Map(api);
 
         // ── Subscriptions ─────────────────────────────
-        SubscriptionEndpoints.Map(app);
+        SubscriptionEndpoints.Map(api);
 
         // ── Affiliates ────────────────────────────────
-        AffiliateEndpoints.Map(app);
+        AffiliateEndpoints.Map(api);
 
         // ── Stripe Webhook ────────────────────────────
-        StripeWebhookEndpoint.Map(app);
+        StripeWebhookEndpoint.Map(api);
     }
 }

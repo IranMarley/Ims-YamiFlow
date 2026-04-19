@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Reviews;
 
@@ -17,11 +16,11 @@ public record ListCourseReviewsQuery(
     Guid CourseId,
     int Page = 1,
     int PageSize = 10
-) : IRequest<PagedResult<ReviewItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 // ── Handler ───────────────────────────────────────────
 public class ListCourseReviewsHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListCourseReviewsQuery, PagedResult<ReviewItem>>
+    : IHandler<ListCourseReviewsQuery, PagedResult<ReviewItem>>
 {
     public async Task<PagedResult<ReviewItem>> Handle(ListCourseReviewsQuery q, CancellationToken ct)
     {

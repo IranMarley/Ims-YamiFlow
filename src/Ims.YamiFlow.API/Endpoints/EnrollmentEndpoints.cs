@@ -2,8 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Enrollments;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Enrollments;
-using MediatR;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ims.YamiFlow.API.Endpoints;
 
@@ -14,9 +12,9 @@ public static class EnrollmentEndpoints
         var group = app.MapGroup("/api/enrollments").WithTags(Resources.Enrollment);
 
         group.MapPost("/", async (
-            EnrollRequest req, IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            EnrollRequest req, EnrollHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new EnrollCommand(
+            var result = await handler.Handle(new EnrollCommand(
                 user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.CourseId, req.CouponCode), ct);
             return result.IsSuccess
                 ? Results.Created($"/api/enrollments/{result.Value!.EnrollmentId}", result.Value)
@@ -30,9 +28,9 @@ public static class EnrollmentEndpoints
         .WithName("Enroll");
 
         group.MapPost("/{enrollmentId:guid}/cancel", async (
-            Guid enrollmentId, IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            Guid enrollmentId, CancelEnrollmentHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new CancelEnrollmentCommand(
+            var result = await handler.Handle(new CancelEnrollmentCommand(
                 enrollmentId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
@@ -40,10 +38,10 @@ public static class EnrollmentEndpoints
         .WithName("CancelEnrollment");
 
         group.MapGet("/my", async (
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct,
+            GetMyEnrollmentsHandler handler, ClaimsPrincipal user, CancellationToken ct,
             int page = 1, int pageSize = 10) =>
         {
-            var result = await mediator.Send(new GetMyEnrollmentsQuery(
+            var result = await handler.Handle(new GetMyEnrollmentsQuery(
                 user.FindFirstValue(ClaimTypes.NameIdentifier)!, page, pageSize), ct);
             return Results.Ok(result);
         })
@@ -51,19 +49,19 @@ public static class EnrollmentEndpoints
         .WithName("GetMyEnrollments");
 
         group.MapGet("/{enrollmentId:guid}/progress", async (
-            Guid enrollmentId, IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+            Guid enrollmentId, GetProgressHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var result = await mediator.Send(new GetProgressQuery(
+            var result = await handler.Handle(new GetProgressQuery(
                 enrollmentId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Enrollment, Operations.Read))
         .WithName("GetProgress");
 
-        group.MapGet("/my/course-ids", async (IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+        group.MapGet("/my/course-ids", async (GetMyCourseIdsHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
-            var studentId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var ids = await mediator.Send(new GetMyCourseIdsQuery(studentId), ct);
+            var ids = await handler.Handle(new GetMyCourseIdsQuery(
+                user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return Results.Ok(ids);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Enrollment, Operations.Read))

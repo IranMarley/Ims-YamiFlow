@@ -1,10 +1,9 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Notifications;
 
 // ── MarkNotificationReadCommand ───────────────────────
-public record MarkNotificationReadCommand(Guid NotificationId, string UserId) : IRequest<Result>;
+public record MarkNotificationReadCommand(Guid NotificationId, string UserId);
 
 public class MarkNotificationReadValidator : AbstractValidator<MarkNotificationReadCommand>
 {
@@ -15,7 +14,7 @@ public class MarkNotificationReadValidator : AbstractValidator<MarkNotificationR
     }
 }
 
-public class MarkNotificationReadHandler : IRequestHandler<MarkNotificationReadCommand, Result>
+public class MarkNotificationReadHandler : IHandler<MarkNotificationReadCommand, Result>
 {
     public Task<Result> Handle(MarkNotificationReadCommand cmd, CancellationToken ct)
     {
@@ -25,7 +24,7 @@ public class MarkNotificationReadHandler : IRequestHandler<MarkNotificationReadC
 }
 
 // ── MarkAllNotificationsReadCommand ───────────────────
-public record MarkAllNotificationsReadCommand(string UserId) : IRequest<Result>;
+public record MarkAllNotificationsReadCommand(string UserId);
 
 public class MarkAllNotificationsReadValidator : AbstractValidator<MarkAllNotificationsReadCommand>
 {
@@ -35,7 +34,7 @@ public class MarkAllNotificationsReadValidator : AbstractValidator<MarkAllNotifi
     }
 }
 
-public class MarkAllNotificationsReadHandler : IRequestHandler<MarkAllNotificationsReadCommand, Result>
+public class MarkAllNotificationsReadHandler : IHandler<MarkAllNotificationsReadCommand, Result>
 {
     public Task<Result> Handle(MarkAllNotificationsReadCommand cmd, CancellationToken ct)
     {

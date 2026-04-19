@@ -1,10 +1,9 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Certificates;
 
 // ── Query ─────────────────────────────────────────────
-public record VerifyCertificateQuery(string Code) : IRequest<Result<CertificateVerification>>;
+public record VerifyCertificateQuery(string Code);
 
 // ── Response ──────────────────────────────────────────
 public record CertificateVerification(
@@ -17,7 +16,7 @@ public record CertificateVerification(
 
 // ── Handler ───────────────────────────────────────────
 public class VerifyCertificateHandler(IDbConnectionFactory db)
-    : IRequestHandler<VerifyCertificateQuery, Result<CertificateVerification>>
+    : IHandler<VerifyCertificateQuery, Result<CertificateVerification>>
 {
     public async Task<Result<CertificateVerification>> Handle(VerifyCertificateQuery q, CancellationToken ct)
     {

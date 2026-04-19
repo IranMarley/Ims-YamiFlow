@@ -1,6 +1,5 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Enums;
-using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace Ims.YamiFlow.Application.Commands.Subscriptions;
@@ -14,7 +13,7 @@ public record SubscribeResponse(
     string? PublishableKey);
 
 // ── Subscribe ─────────────────────────────────────────
-public record SubscribeCommand(string UserId, Guid PlanId) : IRequest<Result<SubscribeResponse>>;
+public record SubscribeCommand(string UserId, Guid PlanId);
 
 public class SubscribeValidator : AbstractValidator<SubscribeCommand>
 {
@@ -33,7 +32,7 @@ public class SubscribeHandler(
     IUserStripeCustomerService customerService,
     IUnitOfWork uow,
     ILogger<SubscribeHandler> logger)
-    : IRequestHandler<SubscribeCommand, Result<SubscribeResponse>>
+    : IHandler<SubscribeCommand, Result<SubscribeResponse>>
 {
     public async Task<Result<SubscribeResponse>> Handle(SubscribeCommand cmd, CancellationToken ct)
     {
@@ -106,7 +105,7 @@ public class SubscribeHandler(
 }
 
 // ── Cancel ────────────────────────────────────────────
-public record CancelSubscriptionCommand(string UserId, bool AtPeriodEnd = true) : IRequest<Result>;
+public record CancelSubscriptionCommand(string UserId, bool AtPeriodEnd = true);
 
 public class CancelSubscriptionValidator : AbstractValidator<CancelSubscriptionCommand>
 {
@@ -117,7 +116,7 @@ public class CancelSubscriptionHandler(
     ISubscriptionRepository subscriptions,
     IStripeService stripe,
     IUnitOfWork uow)
-    : IRequestHandler<CancelSubscriptionCommand, Result>
+    : IHandler<CancelSubscriptionCommand, Result>
 {
     public async Task<Result> Handle(CancelSubscriptionCommand cmd, CancellationToken ct)
     {
@@ -141,7 +140,7 @@ public class CancelSubscriptionHandler(
 }
 
 // ── Resume ────────────────────────────────────────────
-public record ResumeSubscriptionCommand(string UserId) : IRequest<Result>;
+public record ResumeSubscriptionCommand(string UserId);
 
 public class ResumeSubscriptionValidator : AbstractValidator<ResumeSubscriptionCommand>
 {
@@ -152,7 +151,7 @@ public class ResumeSubscriptionHandler(
     ISubscriptionRepository subscriptions,
     IStripeService stripe,
     IUnitOfWork uow)
-    : IRequestHandler<ResumeSubscriptionCommand, Result>
+    : IHandler<ResumeSubscriptionCommand, Result>
 {
     public async Task<Result> Handle(ResumeSubscriptionCommand cmd, CancellationToken ct)
     {

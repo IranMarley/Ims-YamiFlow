@@ -1,11 +1,10 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 // ── Command ───────────────────────────────────────────
-public record ResetPasswordCommand(string Email, string Token, string NewPassword) : IRequest<Result>;
+public record ResetPasswordCommand(string Email, string Token, string NewPassword);
 
 // ── Validator ─────────────────────────────────────────
 public class ResetPasswordValidator : AbstractValidator<ResetPasswordCommand>
@@ -20,7 +19,7 @@ public class ResetPasswordValidator : AbstractValidator<ResetPasswordCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class ResetPasswordHandler(IAuthUserService authUserService)
-    : IRequestHandler<ResetPasswordCommand, Result>
+    : IHandler<ResetPasswordCommand, Result>
 {
     public async Task<Result> Handle(ResetPasswordCommand cmd, CancellationToken ct)
     {

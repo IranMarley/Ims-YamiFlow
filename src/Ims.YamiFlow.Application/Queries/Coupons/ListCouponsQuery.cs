@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Coupons;
 
@@ -15,12 +14,11 @@ public record CouponItem(
 );
 
 // ── Query ─────────────────────────────────────────────
-public record ListCouponsQuery(int Page = 1, int PageSize = 20)
-    : IRequest<PagedResult<CouponItem>>, IPaginatedQuery;
+public record ListCouponsQuery(int Page = 1, int PageSize = 20) : IPaginatedQuery;
 
 // ── Handler ───────────────────────────────────────────
 public class ListCouponsHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListCouponsQuery, PagedResult<CouponItem>>
+    : IHandler<ListCouponsQuery, PagedResult<CouponItem>>
 {
     public async Task<PagedResult<CouponItem>> Handle(ListCouponsQuery q, CancellationToken ct)
     {

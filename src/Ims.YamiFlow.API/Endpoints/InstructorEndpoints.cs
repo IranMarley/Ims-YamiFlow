@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Instructor;
-using MediatR;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -15,20 +14,20 @@ public static class InstructorEndpoints
         group.MapGet("/courses", async (
             int page,
             int pageSize,
-            IMediator mediator,
+            GetMyCoursesHandler handler,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             var instructorId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            return Results.Ok(await mediator.Send(new GetMyCoursesQuery(instructorId, page, pageSize), ct));
+            return Results.Ok(await handler.Handle(new GetMyCoursesQuery(instructorId, page, pageSize), ct));
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Instructor, Operations.Read))
         .WithName("GetInstructorCourses");
 
-        group.MapGet("/stats", async (IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
+        group.MapGet("/stats", async (GetMyStatsHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var instructorId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var result = await mediator.Send(new GetMyStatsQuery(instructorId), ct);
+            var result = await handler.Handle(new GetMyStatsQuery(instructorId), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Instructor, Operations.Read))

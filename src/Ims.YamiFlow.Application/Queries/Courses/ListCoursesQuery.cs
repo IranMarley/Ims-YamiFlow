@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Courses;
 
@@ -9,7 +8,7 @@ public record ListCoursesQuery(
     CourseLevel? Level,
     int Page = 1,
     int PageSize = 12
-) : IRequest<PagedResult<CourseListItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 // ── Response ──────────────────────────────────────────
 public record CourseListItem(
@@ -28,7 +27,7 @@ public record CourseListItem(
 
 // ── Handler ───────────────────────────────────────────
 public class ListCoursesHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListCoursesQuery, PagedResult<CourseListItem>>
+    : IHandler<ListCoursesQuery, PagedResult<CourseListItem>>
 {
     public async Task<PagedResult<CourseListItem>> Handle(ListCoursesQuery q, CancellationToken ct)
     {

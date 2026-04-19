@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Forum;
 
@@ -19,11 +18,11 @@ public record ListPostsQuery(
     Guid? CourseId,
     int Page = 1,
     int PageSize = 20
-) : IRequest<PagedResult<PostItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 // ── Handler ───────────────────────────────────────────
 public class ListPostsHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListPostsQuery, PagedResult<PostItem>>
+    : IHandler<ListPostsQuery, PagedResult<PostItem>>
 {
     public async Task<PagedResult<PostItem>> Handle(ListPostsQuery q, CancellationToken ct)
     {

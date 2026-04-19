@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Admin;
 
@@ -32,10 +31,10 @@ file sealed class UserRow
 }
 
 // ── GetAdminStatsQuery ────────────────────────────────
-public record GetAdminStatsQuery : IRequest<Result<AdminStatsResponse>>;
+public record GetAdminStatsQuery;
 
 public class GetAdminStatsHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetAdminStatsQuery, Result<AdminStatsResponse>>
+    : IHandler<GetAdminStatsQuery, Result<AdminStatsResponse>>
 {
     public async Task<Result<AdminStatsResponse>> Handle(GetAdminStatsQuery q, CancellationToken ct)
     {
@@ -63,10 +62,10 @@ public record ListUsersQuery(
     string? Search,
     int Page = 1,
     int PageSize = 20
-) : IRequest<PagedResult<UserItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 public class ListUsersHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListUsersQuery, PagedResult<UserItem>>
+    : IHandler<ListUsersQuery, PagedResult<UserItem>>
 {
     public async Task<PagedResult<UserItem>> Handle(ListUsersQuery q, CancellationToken ct)
     {

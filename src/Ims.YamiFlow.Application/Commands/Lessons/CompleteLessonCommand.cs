@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Lessons;
 
@@ -7,7 +6,7 @@ public record CompleteLessonCommand(
     Guid EnrollmentId,
     Guid LessonId,
     string StudentId
-) : IRequest<Result<CompleteLessonResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record CompleteLessonResponse(decimal ProgressPercent, bool CourseComplete);
@@ -18,7 +17,7 @@ public class CompleteLessonHandler(
     ICourseRepository courses,
     ICertificateRepository certificates,
     IUnitOfWork uow)
-    : IRequestHandler<CompleteLessonCommand, Result<CompleteLessonResponse>>
+    : IHandler<CompleteLessonCommand, Result<CompleteLessonResponse>>
 {
     public async Task<Result<CompleteLessonResponse>> Handle(CompleteLessonCommand cmd, CancellationToken ct)
     {

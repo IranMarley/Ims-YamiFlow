@@ -2,7 +2,6 @@ using FluentValidation;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Enums;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Coupons;
 
@@ -30,7 +29,7 @@ public record CreateCouponCommand(
     bool IsPercentage,
     DateTime ExpiresAt,
     int? MaxUses
-) : IRequest<Result<CouponResponse>>;
+);
 
 public class CreateCouponValidator : AbstractValidator<CreateCouponCommand>
 {
@@ -43,7 +42,7 @@ public class CreateCouponValidator : AbstractValidator<CreateCouponCommand>
 }
 
 public class CreateCouponHandler(ICouponRepository couponRepository, IUnitOfWork uow)
-    : IRequestHandler<CreateCouponCommand, Result<CouponResponse>>
+    : IHandler<CreateCouponCommand, Result<CouponResponse>>
 {
     public async Task<Result<CouponResponse>> Handle(CreateCouponCommand cmd, CancellationToken ct)
     {
@@ -69,7 +68,7 @@ public class CreateCouponHandler(ICouponRepository couponRepository, IUnitOfWork
 }
 
 // ── DeleteCouponCommand ───────────────────────────────
-public record DeleteCouponCommand(Guid CouponId) : IRequest<Result>;
+public record DeleteCouponCommand(Guid CouponId);
 
 public class DeleteCouponValidator : AbstractValidator<DeleteCouponCommand>
 {
@@ -80,7 +79,7 @@ public class DeleteCouponValidator : AbstractValidator<DeleteCouponCommand>
 }
 
 public class DeleteCouponHandler(ICouponRepository couponRepository, IUnitOfWork uow)
-    : IRequestHandler<DeleteCouponCommand, Result>
+    : IHandler<DeleteCouponCommand, Result>
 {
     public async Task<Result> Handle(DeleteCouponCommand cmd, CancellationToken ct)
     {
@@ -95,7 +94,7 @@ public class DeleteCouponHandler(ICouponRepository couponRepository, IUnitOfWork
 }
 
 // ── ValidateCouponCommand ─────────────────────────────
-public record ValidateCouponCommand(string Code, decimal CoursePrice) : IRequest<Result<CouponValidationResponse>>;
+public record ValidateCouponCommand(string Code, decimal CoursePrice);
 
 public class ValidateCouponValidator : AbstractValidator<ValidateCouponCommand>
 {
@@ -107,7 +106,7 @@ public class ValidateCouponValidator : AbstractValidator<ValidateCouponCommand>
 }
 
 public class ValidateCouponHandler(ICouponRepository couponRepository)
-    : IRequestHandler<ValidateCouponCommand, Result<CouponValidationResponse>>
+    : IHandler<ValidateCouponCommand, Result<CouponValidationResponse>>
 {
     public async Task<Result<CouponValidationResponse>> Handle(ValidateCouponCommand cmd, CancellationToken ct)
     {

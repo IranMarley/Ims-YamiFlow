@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Courses;
 
@@ -10,7 +9,7 @@ public record CreateCourseCommand(
     string Description,
     CourseLevel Level,
     bool IsFree = false
-) : IRequest<Result<CreateCourseResponse>>;
+);
 
 // ── Response ──────────────────────────────────────────
 public record CreateCourseResponse(Guid CourseId, string Title, string Slug);
@@ -28,7 +27,7 @@ public class CreateCourseValidator : AbstractValidator<CreateCourseCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class CreateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<CreateCourseCommand, Result<CreateCourseResponse>>
+    : IHandler<CreateCourseCommand, Result<CreateCourseResponse>>
 {
     public async Task<Result<CreateCourseResponse>> Handle(CreateCourseCommand cmd, CancellationToken ct)
     {

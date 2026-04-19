@@ -1,11 +1,10 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Courses;
 
-public record ArchiveCourseCommand(Guid CourseId, string InstructorId) : IRequest<Result>;
+public record ArchiveCourseCommand(Guid CourseId, string InstructorId);
 
 public class ArchiveCourseHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<ArchiveCourseCommand, Result>
+    : IHandler<ArchiveCourseCommand, Result>
 {
     public async Task<Result> Handle(ArchiveCourseCommand cmd, CancellationToken ct)
     {

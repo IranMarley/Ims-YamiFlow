@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Reviews;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Reviews;
-using MediatR;
 
 namespace Ims.YamiFlow.API.Endpoints;
 
@@ -12,20 +11,20 @@ public static class ReviewEndpoints
     {
         var group = app.MapGroup("/api/courses/{courseId:guid}/reviews").WithTags(Resources.Review);
 
-        group.MapGet("/", async (Guid courseId, int page, int pageSize, IMediator mediator, CancellationToken ct) =>
-            Results.Ok(await mediator.Send(new ListCourseReviewsQuery(courseId, page, pageSize), ct)))
+        group.MapGet("/", async (Guid courseId, int page, int pageSize, ListCourseReviewsHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.Handle(new ListCourseReviewsQuery(courseId, page, pageSize), ct)))
         .AllowAnonymous()
         .WithName("ListCourseReviews");
 
         group.MapPost("/", async (
             Guid courseId,
             CreateReviewRequest req,
-            IMediator mediator,
+            CreateReviewHandler handler,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             var studentId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var result = await mediator.Send(
+            var result = await handler.Handle(
                 new CreateReviewCommand(courseId, studentId, req.Rating, req.Comment), ct);
             return result.IsSuccess
                 ? Results.Created($"/api/courses/{courseId}/reviews/{result.Value!.ReviewId}", result.Value)
@@ -38,12 +37,12 @@ public static class ReviewEndpoints
             Guid courseId,
             Guid reviewId,
             UpdateReviewRequest req,
-            IMediator mediator,
+            UpdateReviewHandler handler,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             var studentId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var result = await mediator.Send(
+            var result = await handler.Handle(
                 new UpdateReviewCommand(reviewId, studentId, req.Rating, req.Comment), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
@@ -53,12 +52,12 @@ public static class ReviewEndpoints
         group.MapDelete("/{reviewId:guid}", async (
             Guid courseId,
             Guid reviewId,
-            IMediator mediator,
+            DeleteReviewHandler handler,
             ClaimsPrincipal user,
             CancellationToken ct) =>
         {
             var studentId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var result = await mediator.Send(new DeleteReviewCommand(reviewId, studentId), ct);
+            var result = await handler.Handle(new DeleteReviewCommand(reviewId, studentId), ct);
             return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Review, Operations.Delete))

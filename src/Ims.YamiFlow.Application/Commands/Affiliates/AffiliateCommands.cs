@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Affiliates;
 
@@ -14,7 +13,7 @@ public record AffiliateLinkResponse(
 );
 
 // ── Command ───────────────────────────────────────────
-public record CreateAffiliateLinkCommand(string UserId, Guid CourseId) : IRequest<Result<AffiliateLinkResponse>>;
+public record CreateAffiliateLinkCommand(string UserId, Guid CourseId);
 
 public class CreateAffiliateLinkValidator : AbstractValidator<CreateAffiliateLinkCommand>
 {
@@ -25,7 +24,7 @@ public class CreateAffiliateLinkValidator : AbstractValidator<CreateAffiliateLin
     }
 }
 
-public class CreateAffiliateLinkHandler : IRequestHandler<CreateAffiliateLinkCommand, Result<AffiliateLinkResponse>>
+public class CreateAffiliateLinkHandler : IHandler<CreateAffiliateLinkCommand, Result<AffiliateLinkResponse>>
 {
     public Task<Result<AffiliateLinkResponse>> Handle(CreateAffiliateLinkCommand cmd, CancellationToken ct)
     {

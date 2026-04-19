@@ -1,11 +1,10 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 // ── Command ───────────────────────────────────────────
-public record ChangePasswordCommand(string UserId, string CurrentPassword, string NewPassword) : IRequest<Result>;
+public record ChangePasswordCommand(string UserId, string CurrentPassword, string NewPassword);
 
 // ── Validator ─────────────────────────────────────────
 public class ChangePasswordValidator : AbstractValidator<ChangePasswordCommand>
@@ -20,7 +19,7 @@ public class ChangePasswordValidator : AbstractValidator<ChangePasswordCommand>
 
 // ── Handler ───────────────────────────────────────────
 public class ChangePasswordHandler(IAuthUserService authUserService)
-    : IRequestHandler<ChangePasswordCommand, Result>
+    : IHandler<ChangePasswordCommand, Result>
 {
     public async Task<Result> Handle(ChangePasswordCommand cmd, CancellationToken ct)
     {

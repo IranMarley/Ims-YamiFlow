@@ -1,13 +1,12 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 using Microsoft.Extensions.Configuration;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 // ── Command ───────────────────────────────────────────
-public record ForgotPasswordCommand(string Email) : IRequest<Result>;
+public record ForgotPasswordCommand(string Email);
 
 // ── Validator ─────────────────────────────────────────
 public class ForgotPasswordValidator : AbstractValidator<ForgotPasswordCommand>
@@ -23,7 +22,7 @@ public class ForgotPasswordHandler(
     IAuthUserService authUserService,
     IEmailService emailService,
     IConfiguration config)
-    : IRequestHandler<ForgotPasswordCommand, Result>
+    : IHandler<ForgotPasswordCommand, Result>
 {
     public async Task<Result> Handle(ForgotPasswordCommand cmd, CancellationToken ct)
     {

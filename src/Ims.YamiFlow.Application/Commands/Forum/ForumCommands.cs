@@ -1,7 +1,6 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Forum;
 
@@ -29,7 +28,7 @@ public record CreatePostCommand(
     Guid? CourseId,
     string Title,
     string Body
-) : IRequest<Result<PostResponse>>;
+);
 
 public class CreatePostValidator : AbstractValidator<CreatePostCommand>
 {
@@ -42,7 +41,7 @@ public class CreatePostValidator : AbstractValidator<CreatePostCommand>
 }
 
 public class CreatePostHandler(IForumPostRepository postRepository, IUnitOfWork uow)
-    : IRequestHandler<CreatePostCommand, Result<PostResponse>>
+    : IHandler<CreatePostCommand, Result<PostResponse>>
 {
     public async Task<Result<PostResponse>> Handle(CreatePostCommand cmd, CancellationToken ct)
     {
@@ -57,7 +56,7 @@ public class CreatePostHandler(IForumPostRepository postRepository, IUnitOfWork 
 }
 
 // ── ReplyToPostCommand ────────────────────────────────
-public record ReplyToPostCommand(Guid PostId, string AuthorId, string Body) : IRequest<Result<ReplyResponse>>;
+public record ReplyToPostCommand(Guid PostId, string AuthorId, string Body);
 
 public class ReplyToPostValidator : AbstractValidator<ReplyToPostCommand>
 {
@@ -70,7 +69,7 @@ public class ReplyToPostValidator : AbstractValidator<ReplyToPostCommand>
 }
 
 public class ReplyToPostHandler(IForumPostRepository postRepository, IUnitOfWork uow)
-    : IRequestHandler<ReplyToPostCommand, Result<ReplyResponse>>
+    : IHandler<ReplyToPostCommand, Result<ReplyResponse>>
 {
     public async Task<Result<ReplyResponse>> Handle(ReplyToPostCommand cmd, CancellationToken ct)
     {
@@ -88,7 +87,7 @@ public class ReplyToPostHandler(IForumPostRepository postRepository, IUnitOfWork
 }
 
 // ── DeletePostCommand ─────────────────────────────────
-public record DeletePostCommand(Guid PostId, string AuthorId) : IRequest<Result>;
+public record DeletePostCommand(Guid PostId, string AuthorId);
 
 public class DeletePostValidator : AbstractValidator<DeletePostCommand>
 {
@@ -100,7 +99,7 @@ public class DeletePostValidator : AbstractValidator<DeletePostCommand>
 }
 
 public class DeletePostHandler(IForumPostRepository postRepository, IUnitOfWork uow)
-    : IRequestHandler<DeletePostCommand, Result>
+    : IHandler<DeletePostCommand, Result>
 {
     public async Task<Result> Handle(DeletePostCommand cmd, CancellationToken ct)
     {

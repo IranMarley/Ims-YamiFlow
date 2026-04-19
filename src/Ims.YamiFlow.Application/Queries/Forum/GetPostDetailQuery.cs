@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Forum;
 
@@ -36,11 +35,11 @@ file sealed class ReplyRow
 }
 
 // ── Query ─────────────────────────────────────────────
-public record GetPostDetailQuery(Guid PostId) : IRequest<Result<PostDetail>>;
+public record GetPostDetailQuery(Guid PostId);
 
 // ── Handler ───────────────────────────────────────────
 public class GetPostDetailHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetPostDetailQuery, Result<PostDetail>>
+    : IHandler<GetPostDetailQuery, Result<PostDetail>>
 {
     public async Task<Result<PostDetail>> Handle(GetPostDetailQuery q, CancellationToken ct)
     {

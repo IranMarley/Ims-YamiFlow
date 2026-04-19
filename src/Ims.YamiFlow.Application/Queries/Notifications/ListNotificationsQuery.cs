@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Notifications;
 
@@ -16,11 +15,11 @@ public record ListNotificationsQuery(
     string UserId,
     int Page = 1,
     int PageSize = 20
-) : IRequest<PagedResult<NotificationItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 // ── Handler ───────────────────────────────────────────
 public class ListNotificationsHandler(IDbConnectionFactory db)
-    : IRequestHandler<ListNotificationsQuery, PagedResult<NotificationItem>>
+    : IHandler<ListNotificationsQuery, PagedResult<NotificationItem>>
 {
     public Task<PagedResult<NotificationItem>> Handle(ListNotificationsQuery q, CancellationToken ct)
     {

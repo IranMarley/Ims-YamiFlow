@@ -1,6 +1,5 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Admin;
 
@@ -9,7 +8,7 @@ public record UpdateUserByAdminCommand(
     string UserId,
     string FullName,
     string Role
-) : IRequest<Result>;
+);
 
 // ── Validator ─────────────────────────────────────────
 public class UpdateUserByAdminValidator : AbstractValidator<UpdateUserByAdminCommand>
@@ -31,7 +30,7 @@ public class UpdateUserByAdminValidator : AbstractValidator<UpdateUserByAdminCom
 public class UpdateUserByAdminHandler(
     IAuthUserService authUserService,
     IIamService iamService)
-    : IRequestHandler<UpdateUserByAdminCommand, Result>
+    : IHandler<UpdateUserByAdminCommand, Result>
 {
     public async Task<Result> Handle(UpdateUserByAdminCommand cmd, CancellationToken ct)
     {

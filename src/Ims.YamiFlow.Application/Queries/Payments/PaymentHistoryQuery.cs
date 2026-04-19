@@ -1,5 +1,4 @@
 using Dapper;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Payments;
 
@@ -18,10 +17,10 @@ public record GetPaymentHistoryQuery(
     string UserId,
     int Page = 1,
     int PageSize = 20
-) : IRequest<PagedResult<PaymentItem>>, IPaginatedQuery;
+) : IPaginatedQuery;
 
 public class GetPaymentHistoryHandler(IDbConnectionFactory db)
-    : IRequestHandler<GetPaymentHistoryQuery, PagedResult<PaymentItem>>
+    : IHandler<GetPaymentHistoryQuery, PagedResult<PaymentItem>>
 {
     public async Task<PagedResult<PaymentItem>> Handle(
         GetPaymentHistoryQuery q, CancellationToken ct)

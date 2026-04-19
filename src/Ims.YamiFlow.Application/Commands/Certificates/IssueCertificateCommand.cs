@@ -1,12 +1,11 @@
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Certificates;
 
 public record IssueCertificateCommand(Guid EnrollmentId, string StudentId)
-    : IRequest<Result<CertificateResponse>>;
+   ;
 
 public record CertificateResponse(Guid CertificateId, string Code, DateTime IssuedAt);
 
@@ -15,7 +14,7 @@ public class IssueCertificateHandler(
     ICertificateRepository certificateRepository,
     ICourseRepository courseRepository,
     IUnitOfWork uow)
-    : IRequestHandler<IssueCertificateCommand, Result<CertificateResponse>>
+    : IHandler<IssueCertificateCommand, Result<CertificateResponse>>
 {
     public async Task<Result<CertificateResponse>> Handle(
         IssueCertificateCommand cmd, CancellationToken ct)

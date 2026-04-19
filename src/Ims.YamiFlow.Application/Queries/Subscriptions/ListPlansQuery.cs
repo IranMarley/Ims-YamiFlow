@@ -1,4 +1,3 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Queries.Subscriptions;
 
@@ -13,10 +12,10 @@ public record PlanItem(
     int? TrialDays,
     string StripePriceId);
 
-public record ListPlansQuery : IRequest<Result<IReadOnlyList<PlanItem>>>;
+public record ListPlansQuery;
 
 public class ListPlansHandler(ISubscriptionPlanRepository plans)
-    : IRequestHandler<ListPlansQuery, Result<IReadOnlyList<PlanItem>>>
+    : IHandler<ListPlansQuery, Result<IReadOnlyList<PlanItem>>>
 {
     public async Task<Result<IReadOnlyList<PlanItem>>> Handle(
         ListPlansQuery q, CancellationToken ct)

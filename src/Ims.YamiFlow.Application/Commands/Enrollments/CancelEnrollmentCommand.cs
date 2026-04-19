@@ -1,11 +1,10 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Enrollments;
 
-public record CancelEnrollmentCommand(Guid EnrollmentId, string StudentId) : IRequest<Result>;
+public record CancelEnrollmentCommand(Guid EnrollmentId, string StudentId);
 
 public class CancelEnrollmentHandler(IEnrollmentRepository enrollments, IUnitOfWork uow)
-    : IRequestHandler<CancelEnrollmentCommand, Result>
+    : IHandler<CancelEnrollmentCommand, Result>
 {
     public async Task<Result> Handle(CancelEnrollmentCommand cmd, CancellationToken ct)
     {

@@ -1,11 +1,10 @@
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Modules;
 
-public record DeleteModuleCommand(Guid CourseId, Guid ModuleId, string InstructorId) : IRequest<Result>;
+public record DeleteModuleCommand(Guid CourseId, Guid ModuleId, string InstructorId);
 
 public class DeleteModuleHandler(ICourseRepository courses, IUnitOfWork uow)
-    : IRequestHandler<DeleteModuleCommand, Result>
+    : IHandler<DeleteModuleCommand, Result>
 {
     public async Task<Result> Handle(DeleteModuleCommand cmd, CancellationToken ct)
     {

@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 
 namespace Ims.YamiFlow.Application.Commands.Lessons;
 
@@ -8,7 +7,7 @@ public record SaveProgressCommand(
     Guid LessonId,
     string StudentId,
     int WatchedSeconds
-) : IRequest<Result>;
+);
 
 public class SaveProgressValidator : AbstractValidator<SaveProgressCommand>
 {
@@ -19,7 +18,7 @@ public class SaveProgressValidator : AbstractValidator<SaveProgressCommand>
 }
 
 public class SaveProgressHandler(IEnrollmentRepository enrollments, IUnitOfWork uow)
-    : IRequestHandler<SaveProgressCommand, Result>
+    : IHandler<SaveProgressCommand, Result>
 {
     public async Task<Result> Handle(SaveProgressCommand cmd, CancellationToken ct)
     {
