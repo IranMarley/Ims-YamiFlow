@@ -14,6 +14,7 @@ export interface InstructorCourse {
   description: string
   thumbnail: string | null
   price: number
+  isFree: boolean
   level: number
   instructorId: string
   enrollmentCount: number

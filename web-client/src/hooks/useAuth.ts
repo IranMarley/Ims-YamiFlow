@@ -6,6 +6,13 @@ import { authService } from '../services/auth.service'
 import { useAuthStore } from '../store/authStore'
 import type { LoginRequest, RegisterRequest } from '../types/auth'
 
+function extractErrorMessage(err: unknown, fallback: string): string {
+  const data = (err as { response?: { data?: unknown } })?.response?.data
+  if (typeof data === 'string' && data.length > 0) return data
+  if (data && typeof data === 'object' && 'message' in data) return String((data as { message: unknown }).message)
+  return fallback
+}
+
 export function useLogin() {
   const { setAuth } = useAuthStore()
   const router = useRouter()
@@ -13,7 +20,7 @@ export function useLogin() {
 
   return useMutation<any, Error, LoginRequest>({
     mutationFn: (data: LoginRequest) => authService.login(data),
-    onError: (err) => toast.error((err as Error)?.message || 'Login failed'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Login failed')),
     onSuccess: (response) => {
       setAuth(
         { userId: response.userId, email: response.email, fullName: response.fullName, role: response.role },
@@ -28,21 +35,16 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const router = useRouter()
-
   return useMutation<any, Error, RegisterRequest>({
     mutationFn: (data: RegisterRequest) => authService.register(data),
-    onError: (err) => toast.error((err as Error)?.message || 'Registration failed'),
-    onSuccess: () => {
-      router.push('/login')
-    },
+    onError: (err) => toast.error(extractErrorMessage(err, 'Registration failed')),
   })
 }
 
 export function useForgotPassword() {
   return useMutation<any, Error, string>({
     mutationFn: (email: string) => authService.forgotPassword(email),
-    onError: (err) => toast.error((err as Error)?.message || 'Failed to send password reset'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to send password reset')),
     onSuccess: () => toast.success('Password reset email sent.'),
   })
 }
@@ -53,7 +55,7 @@ export function useResetPassword() {
   return useMutation<any, Error, { email: string; token: string; newPassword: string }>({
     mutationFn: (data: { email: string; token: string; newPassword: string }) =>
       authService.resetPassword(data),
-    onError: (err) => toast.error((err as Error)?.message || 'Failed to reset password'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to reset password')),
     onSuccess: () => {
       router.push('/login')
     },
@@ -64,19 +66,17 @@ export function useChangePassword() {
   return useMutation<any, Error, { currentPassword: string; newPassword: string }>({
     mutationFn: (data: { currentPassword: string; newPassword: string }) =>
       authService.changePassword(data),
-    onError: (err) => toast.error((err as Error)?.message || 'Failed to change password'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to change password')),
     onSuccess: () => toast.success('Password changed successfully.'),
   })
 }
 
 export function useConfirmEmail() {
-  const router = useRouter()
-
   return useMutation<any, Error, { email: string; token: string }>({
     mutationFn: (data: { email: string; token: string }) => authService.confirmEmail(data),
-    onError: (err) => toast.error((err as Error)?.message || 'Failed to confirm email'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to confirm email')),
     onSuccess: () => {
-      router.push('/login')
+      toast.success('Email confirmed! You can now sign in.')
     },
   })
 }
@@ -84,7 +84,8 @@ export function useConfirmEmail() {
 export function useResendConfirmation() {
   return useMutation<any, Error, string>({
     mutationFn: (email: string) => authService.resendConfirmation(email),
-    onError: (err) => toast.error((err as Error)?.message || 'Failed to resend confirmation'),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to resend confirmation')),
+    onSuccess: () => toast.success('Confirmation email sent. Check your inbox.'),
   })
 }
 

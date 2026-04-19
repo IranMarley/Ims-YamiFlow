@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { useLogin } from '../../hooks/useAuth'
+import { useLogin, useResendConfirmation } from '../../hooks/useAuth'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
 
@@ -16,10 +16,12 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const loginMutation = useLogin()
+  const resendMutation = useResendConfirmation()
 
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -28,6 +30,13 @@ export default function LoginPage() {
   const onSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data)
   }
+
+  const serverError = (() => {
+    const data = (loginMutation.error as { response?: { data?: unknown } })?.response?.data
+    if (typeof data === 'string' && data.length > 0) return data
+    if (data && typeof data === 'object' && 'message' in data) return String((data as { message: unknown }).message)
+    return loginMutation.isError ? 'Invalid email or password. Please try again.' : null
+  })()
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -87,11 +96,19 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Server error */}
-            {loginMutation.isError && (
-              <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 text-sm text-danger">
-                {(loginMutation.error as { response?: { data?: { message?: string } } })?.response
-                  ?.data?.message ?? 'Invalid email or password. Please try again.'}
+            {serverError && (
+              <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 text-sm text-danger space-y-2">
+                <p>{serverError}</p>
+                {serverError.toLowerCase().includes('confirm') && (
+                  <button
+                    type="button"
+                    onClick={() => resendMutation.mutate(getValues('email'))}
+                    disabled={resendMutation.isPending || resendMutation.isSuccess}
+                    className="underline underline-offset-2 text-danger/80 hover:text-danger disabled:opacity-50 transition-colors"
+                  >
+                    {resendMutation.isPending ? 'Sending…' : resendMutation.isSuccess ? 'Email sent!' : 'Resend confirmation email'}
+                  </button>
+                )}
               </div>
             )}
 
