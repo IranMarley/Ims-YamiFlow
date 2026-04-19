@@ -1,8 +1,6 @@
 using Ims.YamiFlow.API.Middlewares;
 using Ims.YamiFlow.Infrastructure.Audit;
 using Serilog;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Hosting;
 
 namespace Ims.YamiFlow.API.Extensions;
 
@@ -48,7 +46,6 @@ public static class ProgramExtensions
 
         app.UseSerilogRequestLogging();
         app.UseCors();
-
 
         app.UseRateLimiter();
         app.UseAuthentication();
