@@ -1,4 +1,5 @@
 using Ims.YamiFlow.API.Extensions;
+using Ims.YamiFlow.Infrastructure.Audit;
 using Serilog;
 
 // ── Bootstrap logger ──────────────────────────────────────────────
@@ -15,6 +16,9 @@ try
 
     // ── Build ─────────────────────────────────────────────────────
     var app = builder.Build();
+
+    // Configure Audit.NET before seed so EF operations use the Postgres provider
+    AuditNetConfiguration.Configure(app.Services);
 
     // ── Seed ──────────────────────────────────────────────────────
     await app.MigrateAndSeedAsync();

@@ -7,14 +7,12 @@ public class Course
     public string Slug { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public string? Thumbnail { get; private set; }
-    public decimal Price { get; private set; }
+    public bool IsFree { get; private set; }
     public CourseLevel Level { get; private set; }
     public CourseStatus Status { get; private set; }
     public string InstructorId { get; private set; } = string.Empty;
     public DateTime CreatedAt { get; private set; }
     public DateTime? PublishedAt { get; private set; }
-    public decimal? PromotionalPrice { get; private set; }
-    public DateTime? PromotionExpiresAt { get; private set; }
 
     private readonly List<Module> _modules = [];
     public IReadOnlyCollection<Module> Modules => _modules.AsReadOnly();
@@ -24,8 +22,8 @@ public class Course
 
     private Course() { }
 
-    public static Course Create(string title, string description, decimal price,
-        CourseLevel level, string instructorId)
+    public static Course Create(string title, string description, CourseLevel level,
+        string instructorId, bool isFree = false)
     {
         return new Course
         {
@@ -33,7 +31,7 @@ public class Course
             Title = title,
             Slug = GenerateSlug(title),
             Description = description,
-            Price = price,
+            IsFree = isFree,
             Level = level,
             InstructorId = instructorId,
             Status = CourseStatus.Draft,
@@ -67,50 +65,16 @@ public class Course
         Status = CourseStatus.Archived;
     }
 
-    public void Update(string title, string description, decimal price, CourseLevel level)
+    public void Update(string title, string description, CourseLevel level, bool isFree)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("Course title cannot be empty.");
-        if (price < 0)
-            throw new DomainException("Price cannot be negative.");
 
         Title = title;
         Slug = GenerateSlug(title);
         Description = description;
-        Price = price;
         Level = level;
-    }
-
-    public void SetPromotion(decimal promotionalPrice, DateTime expiresAt)
-    {
-        if (promotionalPrice < 0)
-            throw new DomainException("Promotional price cannot be negative.");
-        if (promotionalPrice >= Price)
-            throw new DomainException("Promotional price must be less than the regular price.");
-        if (expiresAt <= DateTime.UtcNow)
-            throw new DomainException("Promotion expiry date must be in the future.");
-
-        PromotionalPrice = promotionalPrice;
-        PromotionExpiresAt = expiresAt;
-    }
-
-    public void ClearPromotion()
-    {
-        PromotionalPrice = null;
-        PromotionExpiresAt = null;
-    }
-
-    public decimal EffectivePrice =>
-        PromotionalPrice.HasValue && PromotionExpiresAt.HasValue && PromotionExpiresAt > DateTime.UtcNow
-            ? PromotionalPrice.Value
-            : Price;
-
-    public void UpdatePrice(decimal newPrice)
-    {
-        if (newPrice < 0)
-            throw new DomainException("Price cannot be negative.");
-
-        Price = newPrice;
+        IsFree = isFree;
     }
 
     public void RemoveModule(Guid moduleId)

@@ -8,8 +8,8 @@ public record CreateCourseCommand(
     string InstructorId,
     string Title,
     string Description,
-    decimal Price,
-    CourseLevel Level
+    CourseLevel Level,
+    bool IsFree = false
 ) : IRequest<Result<CreateCourseResponse>>;
 
 // ── Response ──────────────────────────────────────────
@@ -23,7 +23,6 @@ public class CreateCourseValidator : AbstractValidator<CreateCourseCommand>
         RuleFor(x => x.InstructorId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(2000);
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0).WithMessage("Price cannot be negative.");
     }
 }
 
@@ -33,7 +32,7 @@ public class CreateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
 {
     public async Task<Result<CreateCourseResponse>> Handle(CreateCourseCommand cmd, CancellationToken ct)
     {
-        var course = Course.Create(cmd.Title, cmd.Description, cmd.Price, cmd.Level, cmd.InstructorId);
+        var course = Course.Create(cmd.Title, cmd.Description, cmd.Level, cmd.InstructorId, cmd.IsFree);
         await courses.AddAsync(course, ct);
         await uow.CommitAsync(ct);
 

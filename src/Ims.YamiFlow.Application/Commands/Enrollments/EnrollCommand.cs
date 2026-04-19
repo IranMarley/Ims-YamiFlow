@@ -19,7 +19,6 @@ public record EnrollCommand(
 public record EnrollResponse(
     Guid EnrollmentId,
     string CourseTitle,
-    decimal FinalPrice,
     DateTime EnrolledAt
 );
 
@@ -64,14 +63,13 @@ public class EnrollHandler(
         if (alreadyEnrolled)
             return Result.Failure<EnrollResponse>("Student is already enrolled in this course.");
 
-        var enrollment = Enrollment.Create(cmd.StudentId, cmd.CourseId, pricePaid: 0m);
+        var enrollment = Enrollment.Create(cmd.StudentId, cmd.CourseId);
         await enrollmentRepository.AddAsync(enrollment, ct);
         await uow.CommitAsync(ct);
 
         return Result.Success(new EnrollResponse(
             EnrollmentId: enrollment.Id,
             CourseTitle: course.Title,
-            FinalPrice: 0m,
             EnrolledAt: enrollment.EnrolledAt
         ));
     }

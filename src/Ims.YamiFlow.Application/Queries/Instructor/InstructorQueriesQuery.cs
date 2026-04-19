@@ -32,9 +32,7 @@ public class GetMyCoursesHandler(IDbConnectionFactory db)
                    c."Slug"              AS Slug,
                    c."Description"       AS Description,
                    c."Thumbnail"         AS Thumbnail,
-                   c."Price"             AS Price,
-                   c."PromotionalPrice"  AS PromotionalPrice,
-                   c."PromotionExpiresAt" AS PromotionExpiresAt,
+                   c."IsFree"            AS IsFree,
                    c."Level"             AS Level,
                    c."InstructorId"      AS InstructorId,
                    u."FullName"          AS InstructorName,
@@ -80,7 +78,7 @@ public class GetMyStatsHandler(IDbConnectionFactory db)
                 COUNT(DISTINCT c."Id")::int           AS TotalCourses,
                 COUNT(DISTINCT e."StudentId")::int    AS TotalStudents,
                 COUNT(e."Id")::int                    AS TotalEnrollments,
-                COALESCE(SUM(e."PricePaid"), 0)::numeric AS TotalRevenue
+                0::numeric AS TotalRevenue
             FROM "Courses" c
             LEFT JOIN "Enrollments" e ON e."CourseId" = c."Id"
             WHERE c."InstructorId" = @InstructorId

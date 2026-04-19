@@ -31,8 +31,6 @@ public static class ProgramExtensions
 
     public static WebApplication UseProgramPipeline(this WebApplication app)
     {
-        AuditNetConfiguration.Configure(app.Services);
-
         // Swagger
         app.UseSwagger();
         app.UseSwaggerUI(opt =>

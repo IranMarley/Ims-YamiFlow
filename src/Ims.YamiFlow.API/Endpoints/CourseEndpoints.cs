@@ -18,7 +18,7 @@ public static class CourseEndpoints
         group.MapPost("/", async (CreateCourseRequest req, IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
         {
             var result = await mediator.Send(new CreateCourseCommand(
-                user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.Title, req.Description, req.Price, req.Level), ct);
+                user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.Title, req.Description, req.Level, req.IsFree), ct);
             return result.IsSuccess
                 ? Results.Created($"/api/courses/{result.Value!.CourseId}", result.Value)
                 : Results.BadRequest(result.Error);
@@ -45,7 +45,7 @@ public static class CourseEndpoints
         {
             var result = await mediator.Send(new UpdateCourseCommand(
                 courseId, user.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                req.Title, req.Description, req.Price, req.Level), ct);
+                req.Title, req.Description, req.Level, req.IsFree), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Course, Operations.Update))
@@ -70,25 +70,10 @@ public static class CourseEndpoints
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Course, Operations.Update))
         .WithName("ArchiveCourse");
-
-        group.MapPut("/{courseId:guid}/promotion", async (
-            Guid courseId, [FromBody] SetPromotionRequest req,
-            IMediator mediator, ClaimsPrincipal user, CancellationToken ct) =>
-        {
-            var result = await mediator.Send(new SetPromotionCommand(
-                courseId,
-                user.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                req.PromotionalPrice,
-                req.ExpiresAt), ct);
-            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
-        })
-        .RequireAuthorization(x => x.RequireClaim(Resources.Course, Operations.Update))
-        .WithName("SetPromotion");
     }
 }
 
 // ── Request / param records ───────────────────────────
-public record CreateCourseRequest(string Title, string Description, decimal Price, CourseLevel Level);
-public record UpdateCourseRequest(string Title, string Description, decimal Price, CourseLevel Level);
-public record SetPromotionRequest(decimal? PromotionalPrice, DateTime? ExpiresAt);
+public record CreateCourseRequest(string Title, string Description, CourseLevel Level, bool IsFree = false);
+public record UpdateCourseRequest(string Title, string Description, CourseLevel Level, bool IsFree = false);
 public record ListCoursesParams(string? Search, CourseLevel? Level, int Page = 1, int PageSize = 12);

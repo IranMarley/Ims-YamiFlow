@@ -1,4 +1,3 @@
-using Ims.YamiFlow.Infrastructure.Auditing;
 using CoreConfig = Audit.Core.Configuration;
 using EfConfig = Audit.EntityFramework.Configuration;
 

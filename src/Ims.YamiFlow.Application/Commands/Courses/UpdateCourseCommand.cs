@@ -9,8 +9,8 @@ public record UpdateCourseCommand(
     string InstructorId,
     string Title,
     string Description,
-    decimal Price,
-    CourseLevel Level
+    CourseLevel Level,
+    bool IsFree = false
 ) : IRequest<Result>;
 
 // ── Validator ─────────────────────────────────────────
@@ -21,7 +21,6 @@ public class UpdateCourseValidator : AbstractValidator<UpdateCourseCommand>
         RuleFor(x => x.CourseId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(2000);
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
     }
 }
 
@@ -38,7 +37,7 @@ public class UpdateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
         if (course.InstructorId != cmd.InstructorId)
             return Result.Failure("Access denied.");
 
-        course.Update(cmd.Title, cmd.Description, cmd.Price, cmd.Level);
+        course.Update(cmd.Title, cmd.Description, cmd.Level, cmd.IsFree);
         courses.Update(course);
         await uow.CommitAsync(ct);
 

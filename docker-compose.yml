@@ -24,6 +24,8 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: yamiflow-postgres
+#    ports:
+#      - "5432:5432"   # ← TEMP
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -61,6 +63,7 @@ services:
   api:
     image: ghcr.io/${GHCR_OWNER}/yamiflow-api:latest
     container_name: yamiflow-api
+    tty: true
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080

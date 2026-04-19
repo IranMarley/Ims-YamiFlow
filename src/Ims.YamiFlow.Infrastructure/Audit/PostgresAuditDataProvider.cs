@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Ims.YamiFlow.Infrastructure.Auditing;
+namespace Ims.YamiFlow.Infrastructure.Audit;
 
 public sealed class PostgresAuditDataProvider : AuditDataProvider
 {

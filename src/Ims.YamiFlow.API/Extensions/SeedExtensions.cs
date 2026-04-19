@@ -113,25 +113,25 @@ public static class SeedExtensions
 
         var courses = new[]
         {
-            (Title: "Complete Web Development Bootcamp",        Desc: "Master HTML, CSS, JavaScript, React and Node.js from zero to hero.",          Price: 89.99m,  Level: CourseLevel.Beginner),
-            (Title: "Advanced React & TypeScript",              Desc: "Deep dive into React hooks, context, performance and TypeScript generics.",   Price: 74.99m,  Level: CourseLevel.Advanced),
-            (Title: "Python for Data Science",                  Desc: "Learn Python, Pandas, NumPy, and Matplotlib to analyse real-world datasets.", Price: 69.99m,  Level: CourseLevel.Beginner),
-            (Title: "Machine Learning A-Z",                     Desc: "Practical machine learning with scikit-learn, regression and classification.",Price: 94.99m,  Level: CourseLevel.Intermediate),
-            (Title: "Cloud Architecture with AWS",              Desc: "Design scalable, fault-tolerant systems using AWS core services.",             Price: 109.99m, Level: CourseLevel.Advanced),
-            (Title: "UI/UX Design Fundamentals",                Desc: "User research, wireframing, prototyping and design systems with Figma.",       Price: 59.99m,  Level: CourseLevel.Beginner),
-            (Title: "Docker & Kubernetes in Practice",          Desc: "Containerise applications and orchestrate them with Kubernetes.",              Price: 84.99m,  Level: CourseLevel.Intermediate),
-            (Title: "Full-Stack .NET with Clean Architecture",  Desc: "Build production-grade APIs with ASP.NET Core, EF Core and MediatR.",         Price: 99.99m,  Level: CourseLevel.Advanced),
-            (Title: "iOS Development with SwiftUI",             Desc: "Build beautiful native iOS apps using SwiftUI and Swift 5.",                  Price: 79.99m,  Level: CourseLevel.Intermediate),
-            (Title: "GraphQL API Design",                       Desc: "Design and build scalable GraphQL APIs with schema-first development.",        Price: 64.99m,  Level: CourseLevel.Intermediate),
-            (Title: "Cybersecurity Essentials",                 Desc: "Understand threats, vulnerabilities and defensive security fundamentals.",     Price: 54.99m,  Level: CourseLevel.Beginner),
-            (Title: "DevOps CI/CD Pipelines",                   Desc: "Automate builds, tests and deployments with GitHub Actions and Jenkins.",     Price: 77.99m,  Level: CourseLevel.Intermediate),
+            (Title: "Complete Web Development Bootcamp",        Desc: "Master HTML, CSS, JavaScript, React and Node.js from zero to hero.",          IsFree: true,  Level: CourseLevel.Beginner),
+            (Title: "Advanced React & TypeScript",              Desc: "Deep dive into React hooks, context, performance and TypeScript generics.",   IsFree: false, Level: CourseLevel.Advanced),
+            (Title: "Python for Data Science",                  Desc: "Learn Python, Pandas, NumPy, and Matplotlib to analyse real-world datasets.", IsFree: true,  Level: CourseLevel.Beginner),
+            (Title: "Machine Learning A-Z",                     Desc: "Practical machine learning with scikit-learn, regression and classification.",IsFree: false, Level: CourseLevel.Intermediate),
+            (Title: "Cloud Architecture with AWS",              Desc: "Design scalable, fault-tolerant systems using AWS core services.",             IsFree: false, Level: CourseLevel.Advanced),
+            (Title: "UI/UX Design Fundamentals",                Desc: "User research, wireframing, prototyping and design systems with Figma.",       IsFree: true,  Level: CourseLevel.Beginner),
+            (Title: "Docker & Kubernetes in Practice",          Desc: "Containerise applications and orchestrate them with Kubernetes.",              IsFree: false, Level: CourseLevel.Intermediate),
+            (Title: "Full-Stack .NET with Clean Architecture",  Desc: "Build production-grade APIs with ASP.NET Core, EF Core and MediatR.",         IsFree: false, Level: CourseLevel.Advanced),
+            (Title: "iOS Development with SwiftUI",             Desc: "Build beautiful native iOS apps using SwiftUI and Swift 5.",                  IsFree: false, Level: CourseLevel.Intermediate),
+            (Title: "GraphQL API Design",                       Desc: "Design and build scalable GraphQL APIs with schema-first development.",        IsFree: false, Level: CourseLevel.Intermediate),
+            (Title: "Cybersecurity Essentials",                 Desc: "Understand threats, vulnerabilities and defensive security fundamentals.",     IsFree: true,  Level: CourseLevel.Beginner),
+            (Title: "DevOps CI/CD Pipelines",                   Desc: "Automate builds, tests and deployments with GitHub Actions and Jenkins.",     IsFree: false, Level: CourseLevel.Intermediate),
         };
 
-        foreach (var (title, desc, price, level) in courses)
+        foreach (var (title, desc, isFree, level) in courses)
         {
             if (await db.Courses.AnyAsync(c => c.Title == title)) continue;
 
-            var course = Course.Create(title, desc, price, level, instructor.Id);
+            var course = Course.Create(title, desc, level, instructor.Id, isFree);
             course.AddModule("Introduction", 1);
             var introModule = course.Modules.First();
             introModule.AddLesson("Getting Started", LessonType.Video, 600, 1);

@@ -290,16 +290,8 @@ namespace Ims.YamiFlow.Infrastructure.Migrations
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
-                    b.Property<decimal>("Price")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<DateTime?>("PromotionExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("PromotionalPrice")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
+                    b.Property<bool>("IsFree")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
@@ -342,10 +334,6 @@ namespace Ims.YamiFlow.Infrastructure.Migrations
 
                     b.Property<DateTime>("EnrolledAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("PricePaid")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

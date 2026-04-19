@@ -13,8 +13,6 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.Property(c => c.Slug).IsRequired().HasMaxLength(200);
         builder.HasIndex(c => c.Slug).IsUnique();
         builder.Property(c => c.Description).HasMaxLength(2000);
-        builder.Property(c => c.Price).HasPrecision(10, 2);
-        builder.Property(c => c.PromotionalPrice).HasPrecision(10, 2);
         builder.Property(c => c.InstructorId).IsRequired();
 
         builder.HasMany(c => c.Modules)
@@ -54,8 +52,6 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.StudentId).IsRequired();
-        builder.Property(e => e.PricePaid).HasPrecision(10, 2);
-
         builder.HasIndex(e => new { e.StudentId, e.CourseId }).IsUnique();
 
         builder.HasMany(e => e.Progress)

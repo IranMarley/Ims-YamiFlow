@@ -5,7 +5,6 @@ public class Enrollment
     public Guid Id { get; private set; }
     public string StudentId { get; private set; } = string.Empty;
     public Guid CourseId { get; private set; }
-    public decimal PricePaid { get; private set; }
     public EnrollmentStatus Status { get; private set; }
     public DateTime EnrolledAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
@@ -15,13 +14,12 @@ public class Enrollment
 
     private Enrollment() { }
 
-    public static Enrollment Create(string studentId, Guid courseId, decimal pricePaid)
+    public static Enrollment Create(string studentId, Guid courseId)
         => new()
         {
             Id = Guid.NewGuid(),
             StudentId = studentId,
             CourseId = courseId,
-            PricePaid = pricePaid,
             Status = EnrollmentStatus.Active,
             EnrolledAt = DateTime.UtcNow
         };

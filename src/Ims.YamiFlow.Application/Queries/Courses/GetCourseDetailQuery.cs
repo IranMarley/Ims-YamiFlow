@@ -30,9 +30,7 @@ public record CourseDetailResponse(
     string Slug,
     string Description,
     string? Thumbnail,
-    decimal Price,
-    decimal? PromotionalPrice,
-    DateTime? PromotionExpiresAt,
+    bool IsFree,
     int Level,
     int Status,
     string InstructorId,
@@ -49,9 +47,7 @@ file sealed class CourseRow
     public string Slug { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string? Thumbnail { get; init; }
-    public decimal Price { get; init; }
-    public decimal? PromotionalPrice { get; init; }
-    public DateTime? PromotionExpiresAt { get; init; }
+    public bool IsFree { get; init; }
     public int Level { get; init; }
     public int Status { get; init; }
     public string InstructorId { get; init; } = string.Empty;
@@ -92,9 +88,7 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
                    c."Slug"                AS Slug,
                    c."Description"         AS Description,
                    c."Thumbnail"           AS Thumbnail,
-                   c."Price"               AS Price,
-                   c."PromotionalPrice"    AS PromotionalPrice,
-                   c."PromotionExpiresAt"  AS PromotionExpiresAt,
+                   c."IsFree"              AS IsFree,
                    c."Level"               AS Level,
                    c."Status"              AS Status,
                    c."InstructorId"        AS InstructorId,
@@ -164,9 +158,7 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
             course.Slug,
             course.Description,
             course.Thumbnail,
-            course.Price,
-            course.PromotionalPrice,
-            course.PromotionExpiresAt,
+            course.IsFree,
             course.Level,
             course.Status,
             course.InstructorId,
