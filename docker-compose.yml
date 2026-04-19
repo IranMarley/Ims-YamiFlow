@@ -9,14 +9,12 @@ services:
   traefik:
     image: traefik:v3.3
     container_name: yamiflow-traefik
-    environment:
-      - DOCKER_API_VERSION=1.41
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - traefik_acme:/acme
     networks:
       - yamiflow
@@ -93,14 +91,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`api.yamiflow.es`)
-      - traefik.http.routers.api.entrypoints=websecure
-      - traefik.http.routers.api.tls.certresolver=letsencrypt
-      - traefik.http.services.api.loadbalancer.server.port=8080
-      - traefik.http.services.api.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.api.loadbalancer.healthcheck.interval=30s
     networks:
       - yamiflow
     restart: unless-stopped
@@ -116,12 +106,6 @@ services:
       NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID: ${STRIPE_PLAN_ANNUAL_ID}
     depends_on:
       - api
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`yamiflow.es`)
-      - traefik.http.routers.frontend.entrypoints=websecure
-      - traefik.http.routers.frontend.tls.certresolver=letsencrypt
-      - traefik.http.services.frontend.loadbalancer.server.port=3000
     networks:
       - yamiflow
     restart: unless-stopped

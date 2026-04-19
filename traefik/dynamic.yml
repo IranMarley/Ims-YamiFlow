@@ -1,0 +1,30 @@
+# ── Traefik · Dynamic Configuration ───────────────────────────────────────────
+
+http:
+  routers:
+    api:
+      rule: "Host(`api.yamiflow.es`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: api
+
+    frontend:
+      rule: "Host(`yamiflow.es`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: frontend
+
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:8080"
+
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:3000"

@@ -22,6 +22,8 @@ WORKDIR /app
 
 COPY --from=build /app .
 
+RUN apt-get update && apt-get install -y --no-install-recommends libkrb5-3 && rm -rf /var/lib/apt/lists/*
+
 # Non-root user — built into .NET 10 base images
 USER $APP_UID
 

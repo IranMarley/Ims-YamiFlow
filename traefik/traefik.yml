@@ -22,24 +22,18 @@ entryPoints:
 
   websecure:
     address: ":443"
-    http:
-      tls:
-        certResolver: letsencrypt
 
 # ── Providers ─────────────────────────────────────────────────────────────────
 providers:
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false
-    network: yamiflow
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
 
 # ── TLS / Let's Encrypt ───────────────────────────────────────────────────────
 certificatesResolvers:
   letsencrypt:
     acme:
-      # !! Replace with your real email before first deploy !!
       email: iran_marley@live.com
       storage: /acme/acme.json
-      # HTTP-01 challenge — requires port 80 reachable from the internet
       httpChallenge:
         entryPoint: web
