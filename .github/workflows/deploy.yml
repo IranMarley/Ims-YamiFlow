@@ -57,6 +57,7 @@ jobs:
             NEXT_PUBLIC_API_URL=https://api.yamiflow.es
             NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID=${{ secrets.STRIPE_PLAN_MONTHLY_ID }}
             NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID=${{ secrets.STRIPE_PLAN_ANNUAL_ID }}
+          progress: plain
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
