@@ -142,7 +142,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-2">
                       <Badge variant="level" level={course.level}>{course.level}</Badge>
                       <span className="text-sm font-semibold text-primary">
-                        {course.price === 0 ? 'Free' : `$${course.price.toFixed(2)}`}
+                        {course.isFree ? 'Free' : 'Subscription'}
                       </span>
                     </div>
                     <h3 className="font-semibold text-text line-clamp-2">{course.title}</h3>

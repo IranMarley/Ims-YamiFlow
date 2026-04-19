@@ -211,7 +211,7 @@ export default function InstructorCoursePage() {
     if (course && !dirty) {
       setTitle(course.title)
       setDesc(course.description)
-      setPrice(String(course.price))
+      setPrice(String(course.price ?? 0))
       setLevel(course.level)
     }
   }, [course?.courseId]) // only run when courseId changes (first load)

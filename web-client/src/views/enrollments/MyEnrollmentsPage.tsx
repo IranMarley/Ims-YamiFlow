@@ -135,10 +135,10 @@ export default function MyEnrollmentsPage() {
                             month: 'long',
                             day: 'numeric',
                           })}
-                          {enrollment.finalPrice > 0 && (
+                          {enrollment.finalPrice != null && enrollment.finalPrice > 0 && (
                             <> · Paid <span className="text-text">${enrollment.finalPrice.toFixed(2)}</span></>
                           )}
-                          {enrollment.finalPrice === 0 && <> · Free</>}
+                          {enrollment.finalPrice != null && enrollment.finalPrice === 0 && <> · Free</>}
                         </p>
                       </div>
 

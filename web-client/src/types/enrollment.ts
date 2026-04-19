@@ -4,7 +4,7 @@ export interface Enrollment {
   courseTitle: string
   courseSlug: string
   courseThumbnail: string | null
-  finalPrice: number
+  finalPrice?: number
   status: number
   completedLessons: number
   totalLessons: number

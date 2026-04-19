@@ -23,7 +23,7 @@ export interface Course {
   title: string
   slug: string
   description: string
-  price: number
+  price?: number
   promotionalPrice?: number | null
   promotionExpiresAt?: string | null
   level: CourseLevel

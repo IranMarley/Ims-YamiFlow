@@ -153,7 +153,7 @@ export default function InstructorPage() {
                           <span className="text-xs text-subtle">{course.publishedAt ? 'Published' : 'Draft'}</span>
                         </div>
                         <span className="text-sm font-semibold text-primary">
-                          {course.price === 0 ? 'Free' : `$${course.price.toFixed(2)}`}
+                          {course.isFree ? 'Free' : 'Subscription'}
                         </span>
                       </div>
                       <h3 className="font-semibold text-text line-clamp-2 mb-1">{course.title}</h3>
