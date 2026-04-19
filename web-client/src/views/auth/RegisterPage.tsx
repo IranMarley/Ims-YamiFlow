@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRegister } from '../../hooks/useAuth'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
 
 const registerSchema = z
   .object({
@@ -30,6 +31,7 @@ type RegisterFormData = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const registerMutation = useRegister()
+  useRedirectIfAuthenticated()
 
   const {
     register,

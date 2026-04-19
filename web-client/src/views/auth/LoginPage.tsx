@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useLogin, useResendConfirmation } from '../../hooks/useAuth'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import { useRouter } from 'next/navigation'
+import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -17,6 +19,8 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const loginMutation = useLogin()
   const resendMutation = useResendConfirmation()
+  const router = useRouter()
+  useRedirectIfAuthenticated()
 
   const {
     register,
@@ -26,6 +30,7 @@ export default function LoginPage() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
+
 
   const onSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data)
@@ -80,15 +85,21 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium text-subtle">Password</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:text-primary-hover transition-colors"
+                <button
+                  type="button"
+                  onClick={() => {
+                    const emailValue = getValues('email')
+                    const href = emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : '/forgot-password'
+                    router.push(href)
+                  }}
+                  className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
                 >
                   Forgot password?
-                </Link>
+                </button>
               </div>
               <Input
                 type="password"
+                showToggle
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 registration={register('password')}
@@ -123,7 +134,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-sm text-subtle">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link
               href="/register"
               className="text-primary hover:text-primary-hover font-medium transition-colors"

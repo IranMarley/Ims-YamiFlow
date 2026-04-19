@@ -77,7 +77,7 @@ export default function Header() {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-surface-hover transition-colors"
+              className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer"
             >
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-semibold">
                 {initials}
@@ -105,7 +105,7 @@ export default function Header() {
                 <Link
                   href="/account/profile"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4 text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -117,7 +117,7 @@ export default function Header() {
                 <Link
                   href="/account/change-password"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors"
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4 text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -130,7 +130,7 @@ export default function Header() {
                   <Link
                     href="/admin"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text hover:bg-surface-hover transition-colors cursor-pointer"
                   >
                     <svg className="w-4 h-4 text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -145,7 +145,7 @@ export default function Header() {
                   <button
                     onClick={() => { setMenuOpen(false); logoutMutation.mutate() }}
                     disabled={logoutMutation.isPending}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors cursor-pointer"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

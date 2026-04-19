@@ -31,7 +31,7 @@ public static class AuthEndpoints
                 ctx.Request.Headers.UserAgent.ToString());
 
             var result = await handler.Handle(cmd, ct);
-            return result.IsSuccess ? Results.Ok(result.Value) : Results.Unauthorized();
+            return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
         .AllowAnonymous()
         .WithName("Login");
