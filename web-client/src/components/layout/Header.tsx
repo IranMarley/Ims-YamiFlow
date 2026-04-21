@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '../../store/authStore'
 import { useLogout } from '../../hooks/useAuth'
 
@@ -22,7 +22,6 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
 
 export default function Header() {
   const user = useAuthStore((s) => s.user)
-  const router = useRouter()
   const logoutMutation = useLogout()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -44,16 +43,11 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const logoHref = isInstructor ? '/instructor' : isAdmin ? '/admin' : '/dashboard'
-
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <button
-            onClick={() => router.push(logoHref)}
-            className="flex items-center gap-2 group"
-          >
+         <Link href={isInstructor ? '/instructor' : isAdmin || isStudent ? '/dashboard' : '/'} className="flex items-center gap-2 group shrink-0">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
               <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -62,7 +56,7 @@ export default function Header() {
             <span className="text-lg font-bold text-text group-hover:text-primary transition-colors">
               YamiFlow
             </span>
-          </button>
+          </Link>
 
           <nav className="hidden sm:flex items-center gap-6">
             {isStudent && (
