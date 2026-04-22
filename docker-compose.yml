@@ -9,8 +9,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - /opt/yamiflow/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /opt/yamiflow/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       - traefik_acme:/acme
     networks:
       - yamiflow
@@ -122,7 +122,7 @@ services:
     container_name: yamiflow-prometheus
     restart: unless-stopped
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /opt/yamiflow/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     networks:
       - monitoring
@@ -135,7 +135,7 @@ services:
     restart: unless-stopped
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
-      - ./monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - /opt/yamiflow/monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
       - tempo_data:/tmp/tempo
     networks:
       - monitoring
@@ -156,7 +156,7 @@ services:
     volumes:
       - loki_data:/loki
       - loki_wal_data:/wal
-      - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - /opt/yamiflow/monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
     networks:
       - monitoring
       - yamiflow
@@ -174,14 +174,16 @@ services:
       - loki
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /opt/yamiflow/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - yamiflow
       - monitoring
 
 # ── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
-  postgres_dev_data:
+  traefik_acme:
+  postgres_data:
+  redis_data:
   grafana_data:
   loki_data:
   loki_wal_data:
