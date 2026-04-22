@@ -46,7 +46,13 @@ public class ExceptionHandlerMiddleware(RequestDelegate next, ILogger<ExceptionH
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception");
+            var exceptionType = ex.GetType().Name;
+            
+            // Enrich Serilog log with exception_type property for Loki labels
+            using (Serilog.Context.LogContext.PushProperty("exception_type", exceptionType))
+            {
+                logger.LogError(ex, "Unhandled exception of type {ExceptionType}: {Message}", exceptionType, ex.Message);
+            }
             
             // Mark activity as error for OpenTelemetry
             var activity = System.Diagnostics.Activity.Current;

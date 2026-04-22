@@ -11,8 +11,8 @@ public static class LoggingExtensions
     {
         builder.Host.UseSerilog((context, loggerConfiguration) =>
         {
+            var appLabel = context.Configuration["LOG_APP_LABEL"];
             var lokiUrl = context.Configuration["LOKI_URL"];
-            var appLabel = "yamiflow-api"; // Hardcoded for consistency in dashboards
             
             loggerConfiguration
                 .ReadFrom.Configuration(context.Configuration)
