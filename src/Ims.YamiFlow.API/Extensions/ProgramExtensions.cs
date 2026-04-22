@@ -33,8 +33,8 @@ public static class ProgramExtensions
         {
             app.UseHttpsRedirection();
         }
-        else
-        {
+        // else
+        // {
             // Swagger
             app.UseSwagger();
             app.UseSwaggerUI(opt =>
@@ -42,7 +42,7 @@ public static class ProgramExtensions
                 opt.SwaggerEndpoint("/swagger/v1/swagger.json", "YamiFlow API v1");
                 opt.RoutePrefix = "swagger";
             });       
-        }
+        //}
 
         app.UseOpenTelemetryPrometheus();
         app.UseSerilogRequestLogging();

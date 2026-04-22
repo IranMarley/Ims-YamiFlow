@@ -23,18 +23,21 @@ entryPoints:
   websecure:
     address: ":443"
 
+  metrics:
+    address: ":8082"
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
 # ── Providers ─────────────────────────────────────────────────────────────────
 providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
-
-# ── Tracing ───────────────────────────────────────────────────────────────────
-tracing:
-  otlp:
-    grpc:
-      endpoint: "tempo:4317"
-      insecure: true
 
 # ── TLS / Let's Encrypt ───────────────────────────────────────────────────────
 certificatesResolvers:

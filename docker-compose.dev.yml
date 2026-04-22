@@ -108,7 +108,7 @@ services:
     image: grafana/tempo:2.1.1
     container_name: yamiflow-tempo
     restart: unless-stopped
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: [ "-config.file=/etc/tempo/tempo.yml" ]
     volumes:
       - ./monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
       - tempo_data:/tmp/tempo

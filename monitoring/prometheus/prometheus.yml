@@ -8,3 +8,11 @@ scrape_configs:
     relabel_configs:
       - target_label: app
         replacement: yamiflow-api
+
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8082']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']

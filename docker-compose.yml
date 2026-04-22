@@ -8,6 +8,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8082:8082"
     volumes:
       - /opt/yamiflow/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - /opt/yamiflow/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
@@ -133,13 +134,30 @@ services:
     image: grafana/tempo:2.1.1
     container_name: yamiflow-tempo
     restart: unless-stopped
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: ["-config.file=/etc/tempo/tempo.yml"]
     volumes:
-      - /opt/yamiflow/monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - /opt/yamiflow/monitoring/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo_data:/tmp/tempo
     networks:
       - monitoring
       - yamiflow
+
+  # ── cAdvisor (container metrics) ──────────────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.1
+    container_name: yamiflow-cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - monitoring
+    privileged: true
+    devices:
+      - /dev/kmsg
 
   # ── Loki (log storage) ─────────────────────────────────────────────────────
   loki:
