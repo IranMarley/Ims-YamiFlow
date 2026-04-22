@@ -1,8 +1,7 @@
-# ── YamiFlow · Local Development Stack ────────────────────────────────────────
+# ── YamiFlow · Development Stack ───────────────────────────────────────────────
 
 services:
-
-  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  # ── PostgreSQL ─────────────────────────────────────
   postgres:
     image: postgres:17-alpine
     container_name: yamiflow-postgres
@@ -15,16 +14,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d yamiflow_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
     networks:
       - yamiflow
     restart: unless-stopped
-    
-  # ── Redis ──────────────────────────────────────────────────────────────────
+
+  # ── Redis ─────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: yamiflow-redis
@@ -32,16 +30,12 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
     networks:
       - yamiflow
     restart: unless-stopped
 
-  # ── API (.NET 10) — built from source ─────────────────────────────────────
+  # ── API (.NET) ────────────────────────────────────
   api:
     build:
       context: .
@@ -50,36 +44,15 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Environment
+      ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: >-
         Host=postgres;Port=5432;Database=${DB_NAME};
         Username=${DB_USER};Password=${DB_PASSWORD}
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
       JwtSettings__Secret: ${JWT_SECRET}
-      JwtSettings__Issuer: Ims.YamiFlow
-      JwtSettings__Audience: Ims.YamiFlow.Clients
-      JwtSettings__ExpirationHours: "8"
-      JwtSettings__RefreshTokenExpirationDays: "30"
-      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID}
-      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET}
-      Authentication__Facebook__AppId: ${FACEBOOK_APP_ID}
-      Authentication__Facebook__AppSecret: ${FACEBOOK_APP_SECRET}
-      Email__From: ${EMAIL_FROM}
-      Email__SmtpHost: ${SMTP_HOST}
-      Email__SmtpPort: ${SMTP_PORT:-587}
-      Email__SmtpUser: ${SMTP_USER}
-      Email__SmtpPass: ${SMTP_PASS}
-      Stripe__SecretKey: ${STRIPE_SECRET_KEY}
-      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
-      Stripe__PlanMonthlyId: ${STRIPE_PLAN_MONTHLY_ID}
-      Stripe__PlanAnnualId: ${STRIPE_PLAN_ANNUAL_ID}
-      Serilog__MinimumLevel: Debug
-      AppUrl: ${APP_URL}
-      #monitoring
+      AppUrl: http://localhost:3000
       LOKI_URL: ${LOKI_URL}
-      LOG_APP_LABEL: ${LOG_APP_LABEL}
-      OTEL_SERVICE_NAME: ${LOG_APP_LABEL}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
     depends_on:
       postgres:
@@ -91,59 +64,53 @@ services:
       - monitoring
     restart: unless-stopped
 
-  # ── Prometheus (metrics storage) ──────────────────────────────────────────
+  # ── Prometheus ────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.44.0
     container_name: yamiflow-prometheus
-    restart: unless-stopped
+    ports:
+      - "9090:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     networks:
       - monitoring
       - yamiflow
+    restart: unless-stopped
 
-  # ── Tempo (distributed tracing) ───────────────────────────────────────────
+  # ── Tempo ─────────────────────────────────────────
   tempo:
     image: grafana/tempo:2.1.1
     container_name: yamiflow-tempo
-    restart: unless-stopped
-    command: [ "-config.file=/etc/tempo/tempo.yml" ]
+    command: ["-config.file=/etc/tempo/tempo.yml"]
     volumes:
-      - ./monitoring/tempo/tempo.yml:/etc/tempo.yaml:ro
+      - ./monitoring/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo_data:/tmp/tempo
     networks:
       - monitoring
       - yamiflow
+    restart: unless-stopped
 
-  # ── Loki (log storage) ─────────────────────────────────────────────────────
+  # ── Loki ──────────────────────────────────────────
   loki:
     image: grafana/loki:3.0.0
     container_name: yamiflow-loki
-    restart: unless-stopped
     command: -config.file=/etc/loki/local-config.yaml
-    user: root
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://loki:3100/ready || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     volumes:
       - loki_data:/loki
       - loki_wal_data:/wal
-      - /opt/yamiflow/monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./monitoring/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
     networks:
       - monitoring
       - yamiflow
-    
-  # ── Grafana (UI) ───────────────────────────────────────────────────────────
+    restart: unless-stopped
+
+  # ── Grafana ───────────────────────────────────────
   grafana:
     image: grafana/grafana:9.5.2
     container_name: yamiflow-grafana
     ports:
       - "3001:3000"
-    restart: unless-stopped
-    user: root
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
@@ -155,8 +122,9 @@ services:
     networks:
       - yamiflow
       - monitoring
+    restart: unless-stopped
 
-# ── Volumes ──────────────────────────────────────────────────────────────────
+# ── Volumes ─────────────────────────────────────────
 volumes:
   postgres_data:
   redis_data:
@@ -166,7 +134,7 @@ volumes:
   prometheus_data:
   tempo_data:
 
-# ── Networks ─────────────────────────────────────────────────────────────────
+# ── Networks ────────────────────────────────────────
 networks:
   yamiflow:
     driver: bridge

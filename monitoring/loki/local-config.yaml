@@ -38,7 +38,7 @@ ingester:
     join_after: 0s
     final_sleep: 0s
   wal:
-    enabled: true
+    enabled: false
     dir: /wal
   chunk_idle_period: 1m
   max_chunk_age: 1m

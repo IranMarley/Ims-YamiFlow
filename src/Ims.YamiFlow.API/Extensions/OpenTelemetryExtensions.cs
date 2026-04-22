@@ -2,7 +2,6 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Exporter;
-using System.Diagnostics;
 
 namespace Ims.YamiFlow.API.Extensions;
 
@@ -10,39 +9,65 @@ public static class OpenTelemetryExtensions
 {
     public static IServiceCollection AddOpenTelemetryConfig(this IServiceCollection services, IConfiguration configuration)
     {
+        var serviceName = configuration["OTEL_SERVICE_NAME"]!;
+
         var resourceBuilder = ResourceBuilder.CreateDefault()
-            .AddService(serviceName: configuration["OTEL_SERVICE_NAME"]!,
-                       serviceInstanceId: Environment.MachineName);
+            .AddService(serviceName: serviceName,
+                        serviceInstanceId: Environment.MachineName,
+                        serviceVersion: "1.0.0");
 
         services.AddOpenTelemetry()
             .WithTracing(tracing =>
             {
                 tracing
                     .SetResourceBuilder(resourceBuilder)
-                    .AddAspNetCoreInstrumentation(options =>
+                    .AddAspNetCoreInstrumentation(o =>
                     {
-                        options.RecordException = true;
+                        o.RecordException = true;
+                        o.EnrichWithHttpRequest = (activity, request) =>
+                        {
+                            activity.SetTag("http.route", request.Path);
+                            activity.SetTag("http.method", request.Method);
+                        };
+                        o.EnrichWithException = (activity, exception) =>
+                        {
+                            activity.SetTag("exception.type", exception.GetType().Name);
+                            activity.SetTag("exception.message", exception.Message);
+                        };
                     })
-                    .AddHttpClientInstrumentation(options => options.RecordException = true)
+                    .AddHttpClientInstrumentation(o => o.RecordException = true)
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddRedisInstrumentation()
                     .AddSource("Ims.YamiFlow.*")
-                    .AddOtlpExporter(options =>
+                    .AddOtlpExporter(o =>
                     {
-                        var endpoint = configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]!;
-                        options.Endpoint = new Uri(endpoint);
-                        options.Protocol = OtlpExportProtocol.Grpc;
+                        o.Endpoint = new Uri(configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]!);
+                        o.Protocol = OtlpExportProtocol.Grpc;
                     });
             })
             .WithMetrics(metrics =>
             {
                 metrics
                     .SetResourceBuilder(resourceBuilder)
+
+                    // ASP.NET Core
+                    .AddAspNetCoreInstrumentation()
+
+                    // HTTP client
+                    .AddHttpClientInstrumentation()
+
+                    // Runtime (.NET)
+                    .AddRuntimeInstrumentation()
+
+                    // Process (CPU, memory)
+                    .AddProcessInstrumentation()
+
+                    // Kestrel
                     .AddMeter("Microsoft.AspNetCore.Hosting")
                     .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
                     .AddMeter("System.Net.Http")
-                    .AddRuntimeInstrumentation()
-                    .AddProcessInstrumentation()
+
+                    // Prometheus scrape endpoint
                     .AddPrometheusExporter();
             });
 
