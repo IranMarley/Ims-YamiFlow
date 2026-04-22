@@ -11,6 +11,9 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // Configure Serilog (full) via extension
+    builder.ConfigureSerilog();
+
     // Configure services via extension
     builder.AddProgramServices();
 

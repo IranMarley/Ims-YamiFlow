@@ -14,7 +14,6 @@ obj/
 /web/
 
 ## Secrets
-appsettings.Production.json
 *secrets*
 
 ## OS
@@ -26,7 +25,6 @@ Thumbs.db
 
 ## Configuration files (local / user-specific)
 # Local ASP.NET Core settings (development overrides)
-appsettings*.json
 
 # Environment files
 .env

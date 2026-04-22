@@ -1,5 +1,4 @@
 using Ims.YamiFlow.API.Middlewares;
-using Ims.YamiFlow.Infrastructure.Audit;
 using Serilog;
 
 namespace Ims.YamiFlow.API.Extensions;
@@ -8,9 +7,6 @@ public static class ProgramExtensions
 {
     public static WebApplicationBuilder AddProgramServices(this WebApplicationBuilder builder)
     {
-        // Serilog configuration from appsettings
-        builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration));
-
         // Register application services using existing extension methods
         builder.Services
             .AddDatabase(builder.Configuration)
@@ -26,22 +22,29 @@ public static class ProgramExtensions
             .AddSwaggerConfig()
             .AddHealthChecks();
 
+        builder.Services.AddOpenTelemetryConfig(builder.Configuration);
+
         return builder;
     }
 
     public static WebApplication UseProgramPipeline(this WebApplication app)
     {
-        // Swagger
-        app.UseSwagger();
-        app.UseSwaggerUI(opt =>
-        {
-            opt.SwaggerEndpoint("/swagger/v1/swagger.json", "YamiFlow API v1");
-            opt.RoutePrefix = "swagger";
-        });
-
         if (!app.Environment.IsDevelopment())
+        {
             app.UseHttpsRedirection();
+        }
+        else
+        {
+            // Swagger
+            app.UseSwagger();
+            app.UseSwaggerUI(opt =>
+            {
+                opt.SwaggerEndpoint("/swagger/v1/swagger.json", "YamiFlow API v1");
+                opt.RoutePrefix = "swagger";
+            });       
+        }
 
+        app.UseOpenTelemetryPrometheus();
         app.UseSerilogRequestLogging();
         app.UseCors();
 
@@ -57,4 +60,3 @@ public static class ProgramExtensions
         return app;
     }
 }
-

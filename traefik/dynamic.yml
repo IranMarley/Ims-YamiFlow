@@ -17,6 +17,14 @@ http:
       tls:
         certResolver: letsencrypt
       service: frontend
+      
+    grafana:
+      rule: "Host(`obs.yamiflow.es`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: grafana
 
   services:
     api:
@@ -28,3 +36,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://frontend:3000"
+
+    grafana:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"

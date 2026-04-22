@@ -29,6 +29,13 @@ providers:
     filename: /etc/traefik/dynamic.yml
     watch: true
 
+# ── Tracing ───────────────────────────────────────────────────────────────────
+tracing:
+  otlp:
+    grpc:
+      endpoint: "tempo:4317"
+      insecure: true
+
 # ── TLS / Let's Encrypt ───────────────────────────────────────────────────────
 certificatesResolvers:
   letsencrypt:
@@ -37,3 +44,4 @@ certificatesResolvers:
       storage: /acme/acme.json
       httpChallenge:
         entryPoint: web
+

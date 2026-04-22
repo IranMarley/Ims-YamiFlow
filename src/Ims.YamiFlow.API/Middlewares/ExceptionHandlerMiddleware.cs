@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentValidation;
 using Ims.YamiFlow.Domain.Exceptions;
+using OpenTelemetry.Trace;
 
 namespace Ims.YamiFlow.API.Middlewares;
 
@@ -46,6 +47,13 @@ public class ExceptionHandlerMiddleware(RequestDelegate next, ILogger<ExceptionH
         catch (Exception ex)
         {
             logger.LogError(ex, "Unhandled exception");
+            
+            // Mark activity as error for OpenTelemetry
+            var activity = System.Diagnostics.Activity.Current;
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            activity?.AddException(ex);
+            activity?.SetTag("exception_type", ex.GetType().FullName);
+
             ctx.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             ctx.Response.ContentType = "application/json";
 

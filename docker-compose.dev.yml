@@ -1,35 +1,21 @@
-# ── YamiFlow · Production Stack ───────────────────────────────────────────────
+# ── YamiFlow · Local Development Stack ────────────────────────────────────────
 
 services:
-  # ── Traefik (reverse proxy + TLS) ─────────────────────────────────────────
-  traefik:
-    image: traefik:v3.3
-    container_name: yamiflow-traefik
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
-      - traefik_acme:/acme
-    networks:
-      - yamiflow
-    restart: unless-stopped
 
   # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:17-alpine
-    container_name: yamiflow-postgres
-#    ports:
-#      - "5432:5432"
+    container_name: yamiflow-dev-postgres
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d yamiflow_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,31 +23,30 @@ services:
     networks:
       - yamiflow
     restart: unless-stopped
-
+    
   # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: yamiflow-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - redis_data:/data
+    container_name: yamiflow-dev-redis
+    ports:
+      - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 5s
-    networks:
-      - yamiflow
     restart: unless-stopped
 
-  # ── API (.NET 10) ──────────────────────────────────────────────────────────
+  # ── API (.NET 10) — built from source ─────────────────────────────────────
   api:
-    image: ghcr.io/${GHCR_OWNER}/yamiflow-api:latest
-    container_name: yamiflow-api
-    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: yamiflow-dev-api
+    ports:
+      - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Environment
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: >-
         Host=postgres;Port=5432;Database=${DB_NAME};
@@ -99,23 +84,9 @@ services:
         condition: service_healthy
     networks:
       - yamiflow
+      - monitoring
     restart: unless-stopped
 
-  # ── Frontend (Next.js) ─────────────────────────────────────────────────────
-  frontend:
-    image: ghcr.io/${GHCR_OWNER}/yamiflow-frontend:latest
-    container_name: yamiflow-frontend
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_API_URL: https://api.yamiflow.es
-      NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID: ${STRIPE_PLAN_MONTHLY_ID}
-      NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID: ${STRIPE_PLAN_ANNUAL_ID}
-    depends_on:
-      - api
-    networks:
-      - yamiflow
-    restart: unless-stopped
-  
   # ── Prometheus (metrics storage) ──────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.44.0
@@ -160,11 +131,13 @@ services:
     networks:
       - monitoring
       - yamiflow
-  
+    
   # ── Grafana (UI) ───────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:9.5.2
     container_name: yamiflow-grafana
+    ports:
+      - "3001:3000"
     restart: unless-stopped
     user: root
     environment:
