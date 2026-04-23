@@ -55,14 +55,14 @@ public class ExceptionHandlerMiddleware
             if ((int)statusCode >= 500)
             {
                 _logger.LogError(ex, 
-                    "Unhandled exception {ExceptionType} on {Method} {Path}. TraceId: {TraceId}", 
-                    exceptionType, method, path, traceId);
+                    "Unhandled exception {ExceptionType} {@ExceptionDetails} on {Method} {Path}. TraceId: {TraceId}", 
+                    exceptionType, ex, method, path, traceId);
             }
             else
             {
-                _logger.LogWarning(
-                    "Business exception {ExceptionType} on {Method} {Path}: {Message}", 
-                    exceptionType, method, path, ex.Message);
+                _logger.LogWarning(ex, 
+                    "Business exception {ExceptionType} {@ExceptionDetails} on {Method} {Path}. TraceId: {TraceId}", 
+                    exceptionType, ex, method, path, traceId);
             }
 
             EnrichActivity(Activity.Current, ex, ex.GetType().FullName ?? "Unknown");

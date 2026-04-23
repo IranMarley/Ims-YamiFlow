@@ -44,6 +44,8 @@ public static class ProgramExtensions
             });       
         }
 
+        app.UseMiddleware<ExceptionHandlerMiddleware>();
+        
         app.UseOpenTelemetryPrometheus();
         app.UseSerilogRequestLogging();
         app.UseCors();
@@ -51,7 +53,6 @@ public static class ProgramExtensions
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseMiddleware<ExceptionHandlerMiddleware>();
 
         // Endpoints
         app.MapAllEndpoints();

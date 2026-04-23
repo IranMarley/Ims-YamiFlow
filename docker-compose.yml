@@ -88,6 +88,7 @@ services:
       Stripe__PlanMonthlyId: ${STRIPE_PLAN_MONTHLY_ID}
       Stripe__PlanAnnualId: ${STRIPE_PLAN_ANNUAL_ID}
       Serilog__MinimumLevel: Debug
+      Serilog__MinimumLevel__Override__Ims: Debug
       AppUrl: ${APP_URL}
       Cors__Origins__0: ${APP_URL}
       #monitoring
