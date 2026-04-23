@@ -20,8 +20,50 @@ public static class SeedExtensions
         await seeder.RunAsync();
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await SeedUsersAsync(userManager);
         await SeedCoursesAsync(db, userManager);
         await SeedSubscriptionPlansAsync(db);
+    }
+    
+    private static async Task SeedUsersAsync(UserManager<AppUser> userManager)
+    {
+        var defaultUsers = new[]
+        {
+            new { 
+                Email = "admin@yamiflow.com", 
+                FullName = "Platform Admin", 
+                Role = "Admin", 
+                Password = "Admin@123" 
+            },
+            new { 
+                Email = "instructor@yamiflow.com", 
+                FullName = "Alex Rivera", 
+                Role = "Instructor", 
+                Password = "Instructor@123" 
+            }
+        };
+
+        foreach (var userData in defaultUsers)
+        {
+            if (await userManager.FindByEmailAsync(userData.Email) == null)
+            {
+                var user = new AppUser
+                {
+                    UserName = userData.Email,
+                    Email = userData.Email,
+                    FullName = userData.FullName,
+                    IsActive = true,
+                    EmailConfirmed = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var result = await userManager.CreateAsync(user, userData.Password);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, userData.Role);
+                }
+            }
+        }
     }
 
     private static async Task SeedSubscriptionPlansAsync(AppDbContext db)
