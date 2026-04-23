@@ -30,13 +30,13 @@ public static class SeedExtensions
         var defaultUsers = new[]
         {
             new { 
-                Email = "admin@yamiflow.com", 
+                Email = "admin@yamiflow.es", 
                 FullName = "Platform Admin", 
                 Role = "Admin", 
                 Password = "Admin@123" 
             },
             new { 
-                Email = "instructor@yamiflow.com", 
+                Email = "instructor@yamiflow.es", 
                 FullName = "Alex Rivera", 
                 Role = "Instructor", 
                 Password = "Instructor@123" 

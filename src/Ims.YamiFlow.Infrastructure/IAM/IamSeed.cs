@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Ims.YamiFlow.Application.IAM.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
@@ -9,7 +8,7 @@ public class IamSeed(
     RoleManager<AppRole> roleManager,
     ILogger<IamSeed> logger)
 {
-    // default platform roles
+    // Default platform roles
     private static readonly Dictionary<string, string> DefaultRoles = new()
     {
         ["Admin"] = "Full platform access",
@@ -17,7 +16,7 @@ public class IamSeed(
         ["Student"] = "Access to enrolled courses"
     };
 
-    // permissions stored as Claim(resource, operation)
+    // Permissions stored as Claim(Type: Resource, Value: Operation)
     private static readonly Dictionary<string, (string Resource, string Operation)[]> DefaultPermissions = new()
     {
         ["Admin"] =
@@ -72,39 +71,45 @@ public class IamSeed(
     {
         foreach (var (roleName, description) in DefaultRoles)
         {
-            if (await roleManager.RoleExistsAsync(roleName))
+            // Check if role exists
+            var role = await roleManager.FindByNameAsync(roleName);
+
+            if (role == null)
             {
-                logger.LogInformation("Role '{Role}' already exists, skipping seed.", roleName);
-                continue;
+                role = new AppRole { Name = roleName, Description = description };
+                var result = await roleManager.CreateAsync(role);
+
+                if (!result.Succeeded)
+                {
+                    logger.LogError("Failed to create role '{Role}': {Errors}",
+                        roleName, string.Join(", ", result.Errors.Select(e => e.Description)));
+                    continue;
+                }
+                logger.LogInformation("Role '{Role}' created successfully.", roleName);
             }
 
-            var role = new AppRole { Name = roleName, Description = description };
-            var result = await roleManager.CreateAsync(role);
-
-            if (!result.Succeeded)
-            {
-                logger.LogError("Failed to create role '{Role}': {Errors}",
-                    roleName, string.Join(", ", result.Errors.Select(e => e.Description)));
-                continue;
-            }
-
-            logger.LogInformation("Role '{Role}' created.", roleName);
-
-            // add permissions as Claim(resource, operation)
+            // Sync Permissions (Claims)
             if (!DefaultPermissions.TryGetValue(roleName, out var permissions)) continue;
+
+            // Fetch current claims from database to avoid duplicates
+            var existingClaims = await roleManager.GetClaimsAsync(role);
 
             foreach (var (resource, operation) in permissions)
             {
-                var claimResult = await roleManager.AddClaimAsync(
-                    role, new Claim(resource, operation));
+                // Only add the claim if it doesn't exist yet
+                if (!existingClaims.Any(c => c.Type == resource && c.Value == operation))
+                {
+                    var claimResult = await roleManager.AddClaimAsync(role, new Claim(resource, operation));
 
-                if (!claimResult.Succeeded)
-                    logger.LogWarning("Failed to add permission '{Resource}:{Operation}' to role '{Role}'.",
-                        resource, operation, roleName);
+                    if (!claimResult.Succeeded)
+                    {
+                        logger.LogWarning("Failed to add permission '{Resource}:{Operation}' to role '{Role}'.",
+                            resource, operation, roleName);
+                    }
+                }
             }
 
-            logger.LogInformation("{Count} permissions added to role '{Role}'.",
-                permissions.Length, roleName);
+            logger.LogInformation("Claims synchronized for role '{Role}'.", roleName);
         }
     }
 }
