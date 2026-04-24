@@ -9,7 +9,7 @@ using Ims.YamiFlow.Infrastructure.Persistence.Context;
 using Ims.YamiFlow.Infrastructure.Persistence.Repositories;
 using Ims.YamiFlow.Infrastructure.Services;
 using Ims.YamiFlow.Infrastructure.Services.Email;
-using Ims.YamiFlow.API.Middlewares;
+using Ims.YamiFlow.Infrastructure.Services.Outbox;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -130,6 +130,7 @@ public static class ServiceExtensions
         services.AddScoped<IIamService, IamService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<IOutboxService, OutboxService>();
         services.AddScoped<IAuthEventService, AuthEventService>();
 
         services.AddHttpContextAccessor();
@@ -152,6 +153,9 @@ public static class ServiceExtensions
 
         // Seed / Initialization
         services.AddScoped<IamSeed>();
+
+        // Background workers
+        services.AddHostedService<OutboxWorker>();
 
         return services;
     }

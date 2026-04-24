@@ -20,7 +20,7 @@ public class ForgotPasswordValidator : AbstractValidator<ForgotPasswordCommand>
 // ── Handler ───────────────────────────────────────────
 public class ForgotPasswordHandler(
     IAuthUserService authUserService,
-    IEmailService emailService,
+    IOutboxService outboxService,
     IConfiguration config)
     : IHandler<ForgotPasswordCommand, Result>
 {
@@ -33,10 +33,9 @@ public class ForgotPasswordHandler(
             var appUrl = config["AppUrl"];
             var link = $"{appUrl}/reset-password?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
 
-            await emailService.SendAsync(
-                cmd.Email,
-                "Reset your password — YamiFlow",
-                EmailTemplates.ResetPassword(link),
+            await outboxService.EnqueueAsync(
+                OutboxMessageTypes.ResetPassword,
+                new ResetPasswordPayload(cmd.Email, link),
                 ct);
         }
 

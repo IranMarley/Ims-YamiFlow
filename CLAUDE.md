@@ -142,6 +142,7 @@ Entities and their key behaviors:
 | `StripeWebhookEvent` | `Create()`, `MarkProcessed()` |
 | `Audit` / `AuditLog` | Change tracking (entity, action, userId, timestamp) |
 | `AuthEvent` | Authentication event tracking |
+| `OutboxMessage` | `Create()`, `MarkProcessing()`, `MarkProcessed()`, `MarkFailed()` — async email queue |
 
 Hierarchy: `Course` → `Module` → `Lesson`; `Enrollment` → `LessonProgress`, `Certificate`.
 
@@ -242,7 +243,8 @@ Required `appsettings.json` keys:
 | Payments: History | Complete | Dapper read query |
 | OpenTelemetry observability | Complete | OTLP traces + Prometheus metrics |
 | Serilog + Grafana Loki | Complete | Structured logging with Loki sink |
-| Email service | Stub (`NoOpEmailService`) | `SmtpEmailService` exists — needs config |
+| Email service | Complete | `SmtpEmailService` + Outbox pattern — all emails enqueued asynchronously via `OutboxWorker` |
+| Outbox Pattern | Complete | `OutboxMessage` entity, `IOutboxService`, `OutboxWorker` (BackgroundService) — `SELECT FOR UPDATE SKIP LOCKED` concurrency |
 | Payments: InitiatePayment | Stub | Returns mock response — needs Stripe/PayPal |
 | Quizzes: Create, AddQuestion, Submit, Delete, Get | Stub | Models + validators done; handlers don't persist |
 | Notifications: MarkRead, MarkAllRead, List | Stub | Handlers return success without DB ops |
@@ -263,6 +265,7 @@ All migrations in `Infrastructure` project:
 | `MakeTransactionIdRequired` | 20260417132854 | TransactionId NOT NULL constraint |
 | `RemovePrice` | 20260418150548 | Remove legacy price column |
 | `AddSubscriptionsAndPayments` | 20260418154918 | Subscriptions table, Course.IsFree, Payment & SubscriptionPlan tables |
+| `AddOutboxMessages` | 20260424155005 | OutboxMessages table with Status/CreatedAt indexes |
 
 ## Audit.NET Integration
 
@@ -389,6 +392,29 @@ NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID=price_...
 - @stripe/react-stripe-js: 6.2.0, @stripe/stripe-js: 9.2.0
 - react-hook-form: 7.53.0, @hookform/resolvers: 3.9.0, zod: 3.23.8
 - axios: 1.7.7, sonner: 2.0.7, tailwindcss: 4
+
+## Outbox Pattern (Email)
+
+All email sending goes through the Outbox — **never call `IEmailService.SendAsync` directly from handlers**.
+
+**Flow:**
+1. Handler calls `IOutboxService.EnqueueAsync(type, payload, ct)` → inserts `OutboxMessage` (Status = `Pending`) into DB
+2. `OutboxWorker` (BackgroundService, polls every 10s) claims batch with `SELECT FOR UPDATE SKIP LOCKED`
+3. Worker deserializes payload, calls `IEmailService.SendAsync`, marks `Processed` or `Failed`
+
+**Files:**
+- `Domain/Entities/OutboxMessage.cs` — entity + `OutboxStatus` constants (`Pending`, `Processing`, `Processed`, `Failed`)
+- `Domain/Interfaces/IExternalServices.cs` — `IOutboxService` interface
+- `Application/Common/OutboxMessageTypes.cs` — type constants (`ConfirmEmail`, `ResetPassword`) + payload records (`ConfirmEmailPayload`, `ResetPasswordPayload`)
+- `Infrastructure/Services/Outbox/OutboxService.cs` — scoped; serializes + saves to DB
+- `Infrastructure/Services/Outbox/OutboxWorker.cs` — singleton BackgroundService; `db.AuditDisabled = true` (no user context in worker)
+
+**Adding new email type:**
+1. Add constant to `OutboxMessageTypes` + payload record in `Application/Common/OutboxMessageTypes.cs`
+2. Add `case` to `OutboxWorker.DispatchAsync`
+3. Enqueue in handler via `outboxService.EnqueueAsync(OutboxMessageTypes.YourType, payload, ct)`
+
+**Concurrency:** `SELECT FOR UPDATE SKIP LOCKED` in PostgreSQL transaction — multiple worker instances never process same message.
 
 ## Adding New Features
 

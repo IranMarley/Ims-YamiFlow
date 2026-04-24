@@ -20,7 +20,7 @@ public class ResendConfirmationValidator : AbstractValidator<ResendConfirmationC
 // ── Handler ───────────────────────────────────────────
 public class ResendConfirmationHandler(
     IAuthUserService authUserService,
-    IEmailService emailService,
+    IOutboxService outboxService,
     IConfiguration config)
     : IHandler<ResendConfirmationCommand, Result>
 {
@@ -34,10 +34,9 @@ public class ResendConfirmationHandler(
             var appUrl = config["AppUrl"];
             var link = $"{appUrl}/confirm-email?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
 
-            await emailService.SendAsync(
-                cmd.Email,
-                "Confirm your email — YamiFlow",
-                EmailTemplates.ConfirmEmail(user.FullName, link),
+            await outboxService.EnqueueAsync(
+                OutboxMessageTypes.ConfirmEmail,
+                new ConfirmEmailPayload(cmd.Email, user.FullName, link),
                 ct);
         }
 

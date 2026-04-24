@@ -1,10 +1,12 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useConfirmEmail } from '../../hooks/useAuth'
 import Button from '../../components/ui/Button'
 import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
+
+type Status = 'idle' | 'pending' | 'success' | 'error'
 
 export default function ConfirmEmailPage() {
   const searchParams = useSearchParams()
@@ -13,22 +15,31 @@ export default function ConfirmEmailPage() {
   const router = useRouter()
   useRedirectIfAuthenticated()
 
+  const [status, setStatus] = useState<Status>('idle')
+  const [errorMsg, setErrorMsg] = useState<string>('')
+
   const email = searchParams.get('email') ?? ''
   const token = searchParams.get('token') ?? ''
 
   useEffect(() => {
     if (called.current || !email || !token) return
     called.current = true
-  // reset previous mutation state (clears prior errors) then trigger
-  confirmMutation.reset()
-  confirmMutation.mutate({ email, token })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    setStatus('pending')
+    confirmMutation.mutateAsync({ email, token })
+      .then(() => setStatus('success'))
+      .catch((err: { response?: { data?: unknown } }) => {
+        const data = err?.response?.data
+        setErrorMsg(typeof data === 'string' && data.length > 0 ? data : 'The link may have expired or already been used.')
+        setStatus('error')
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, token])
 
   useEffect(() => {
-    if (!confirmMutation.isSuccess) return
+    if (status !== 'success') return
     const t = setTimeout(() => router.push('/login'), 3000)
     return () => clearTimeout(t)
-  }, [confirmMutation.isSuccess, router])
+  }, [status, router])
 
   const missingParams = !email || !token
 
@@ -58,7 +69,7 @@ export default function ConfirmEmailPage() {
               </div>
               <Link href="/login"><Button fullWidth>Go to sign in</Button></Link>
             </>
-          ) : confirmMutation.isIdle || confirmMutation.isPending ? (
+          ) : status === 'idle' || status === 'pending' ? (
             <>
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
                 <svg className="w-7 h-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -70,7 +81,7 @@ export default function ConfirmEmailPage() {
                 <p className="text-sm text-subtle mt-1">Please wait a moment.</p>
               </div>
             </>
-          ) : confirmMutation.isSuccess ? (
+          ) : status === 'success' ? (
             <>
               <div className="w-14 h-14 rounded-full bg-success/15 flex items-center justify-center mx-auto">
                 <svg className="w-7 h-7 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -83,7 +94,7 @@ export default function ConfirmEmailPage() {
               </div>
               <Link href="/login"><Button fullWidth>Sign in</Button></Link>
             </>
-          ) : confirmMutation.isError ? (
+          ) : (
             <>
               <div className="w-14 h-14 rounded-full bg-danger/15 flex items-center justify-center mx-auto">
                 <svg className="w-7 h-7 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -92,17 +103,11 @@ export default function ConfirmEmailPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-text">Confirmation failed</h3>
-                <p className="text-sm text-subtle mt-1">
-                  {(() => {
-                    const data = (confirmMutation.error as { response?: { data?: unknown } })?.response?.data
-                    if (typeof data === 'string' && data.length > 0) return data
-                    return 'The link may have expired or already been used.'
-                  })()}
-                </p>
+                <p className="text-sm text-subtle mt-1">{errorMsg}</p>
               </div>
               <Link href="/login"><Button fullWidth variant="secondary">Go to sign in</Button></Link>
             </>
-          ) : null }
+          )}
         </div>
       </div>
     </div>

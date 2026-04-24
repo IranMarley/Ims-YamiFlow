@@ -38,7 +38,7 @@ public class RegisterValidator : AbstractValidator<RegisterCommand>
 // ── Handler ───────────────────────────────────────────
 public class RegisterHandler(
     IAuthUserService authUserService,
-    IEmailService emailService,
+    IOutboxService outboxService,
     IConfiguration config)
     : IHandler<RegisterCommand, Result<RegisterResponse>>
 {
@@ -59,10 +59,9 @@ public class RegisterHandler(
         var appUrl = config["AppUrl"];
         var link = $"{appUrl}/confirm-email?email={Uri.EscapeDataString(cmd.Email)}&token={Uri.EscapeDataString(token)}";
 
-        await emailService.SendAsync(
-            cmd.Email,
-            "Confirm your email — YamiFlow",
-            EmailTemplates.ConfirmEmail(cmd.FullName, link),
+        await outboxService.EnqueueAsync(
+            OutboxMessageTypes.ConfirmEmail,
+            new ConfirmEmailPayload(cmd.Email, cmd.FullName, link),
             ct);
 
         return Result.Success(new RegisterResponse(created.Id, created.Email, cmd.FullName));

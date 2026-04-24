@@ -40,6 +40,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, string>, IAuditD
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     private readonly DbContextHelper _auditHelper = new();
 

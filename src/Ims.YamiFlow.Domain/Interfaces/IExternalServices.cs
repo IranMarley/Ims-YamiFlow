@@ -43,3 +43,8 @@ public interface ITokenService
     Task<AuthTokens?> RefreshAsync(string refreshToken);
     Task RevokeAsync(string userId);
 }
+
+public interface IOutboxService
+{
+    Task EnqueueAsync(string type, object payload, CancellationToken ct = default);
+}

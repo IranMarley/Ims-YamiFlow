@@ -61,7 +61,7 @@ export default function PublicHeader() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-surface-hover transition-colors"
+                  className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-semibold">
                     {initials}

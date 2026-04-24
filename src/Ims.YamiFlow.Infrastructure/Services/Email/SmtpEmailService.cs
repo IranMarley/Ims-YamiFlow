@@ -24,11 +24,17 @@ public sealed class SmtpEmailService(
         using var client = new SmtpClient(_opts.SmtpHost, _opts.SmtpPort)
         {
             Credentials = new NetworkCredential(_opts.SmtpUser, _opts.SmtpPass),
-            EnableSsl = true
+            EnableSsl = true,
+            DeliveryMethod = SmtpDeliveryMethod.Network,
+            UseDefaultCredentials = false
         };
 
-        using var message = new MailMessage(_opts.From, to, subject, body)
+        using var message = new MailMessage
         {
+            From = new MailAddress(_opts.From, _opts.FromName),
+            To = { new MailAddress(to) },
+            Subject = subject,
+            Body = body,
             IsBodyHtml = true
         };
 

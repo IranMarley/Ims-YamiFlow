@@ -51,6 +51,11 @@ services:
         Username=${DB_USER};Password=${DB_PASSWORD}
       ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD}"
       JwtSettings__Secret: ${JWT_SECRET}
+      Email__From: ${EMAIL_FROM}
+      Email__SmtpHost: ${SMTP_HOST}
+      Email__SmtpPort: ${SMTP_PORT:-587}
+      Email__SmtpUser: ${SMTP_USER}
+      Email__SmtpPass: ${SMTP_PASS}
       AppUrl: http://localhost:3000
       LOKI_URL: ${LOKI_URL}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
