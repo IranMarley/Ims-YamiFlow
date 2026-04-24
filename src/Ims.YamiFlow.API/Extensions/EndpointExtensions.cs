@@ -8,9 +8,6 @@ public static class EndpointExtensions
 {
     public static void MapAllEndpoints(this IEndpointRouteBuilder app)
     {
-        // Route all endpoints through the ValidationFilter so FluentValidation
-        // runs automatically on bound request objects — replacing the old MediatR
-        // ValidationBehavior pipeline.
         var api = app.MapGroup("").AddEndpointFilter<ValidationFilter>();
 
         // ── Auth ──────────────────────────────────────

@@ -2,11 +2,6 @@ using FluentValidation;
 
 namespace Ims.YamiFlow.API.Filters;
 
-/// <summary>
-/// Runs FluentValidation on every bound request argument before the handler executes.
-/// Replaces MediatR's ValidationBehavior pipeline behavior.
-/// Throws ValidationException on failure so ExceptionHandlerMiddleware returns the same 400 shape.
-/// </summary>
 public sealed class ValidationFilter(IServiceProvider sp) : IEndpointFilter
 {
     private static readonly HashSet<Type> SkippedTypes =

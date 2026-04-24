@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Ims.YamiFlow** is a full-featured online course platform (LMS) built with Clean Architecture + CQRS on .NET 10. All code, comments, XML docs, and variable names must be in **English** — no Portuguese anywhere in code (only acceptable in user-facing message strings).
+**Ims.YamiFlow** is a full-featured online course platform (LMS) built with Clean Architecture + CQRS on .NET 10. No MediatR — uses a custom `IHandler<TRequest, TResponse>` with direct DI. All code, comments, XML docs, and variable names must be in **English** — no Portuguese anywhere in code (only acceptable in user-facing message strings).
 
 ## Build & Run
 
@@ -40,9 +40,9 @@ src/
   Ims.YamiFlow.Domain         → Entities, Enums, Interfaces, Exceptions (zero external deps)
   Ims.YamiFlow.Infrastructure → EF Core, Dapper, Identity, JWT, Repositories, Seeding
 tests/
-  Ims.YamiFlow.Domain.Tests
-  Ims.YamiFlow.Application.Tests
-  Ims.YamiFlow.Integration.Tests
+  Ims.YamiFlow.Domain.Tests        (scaffold only)
+  Ims.YamiFlow.Application.Tests   (scaffold only)
+  Ims.YamiFlow.Integration.Tests   (scaffold only)
 ```
 
 **Dependency rule:** API → Application + Infrastructure → Domain → nothing.
@@ -50,23 +50,26 @@ tests/
 | Responsibility | Technology |
 |---|---|
 | Framework | ASP.NET Core Minimal API (.NET 10) |
-| CQRS | MediatR 12 |
-| ORM (writes) | EF Core 10 + Npgsql |
-| ORM (reads) | Dapper |
+| CQRS | Custom `IHandler<TRequest, TResponse>` — no MediatR |
+| ORM (writes) | EF Core 10.0.5 + Npgsql 10.0.1 |
+| ORM (reads) | Dapper 2.1.72 |
 | Auth | ASP.NET Identity + JWT Bearer |
 | Social Login | Google + Facebook OAuth2 |
-| Validation | FluentValidation 11 |
-| Logging | Serilog |
-| Cache | Redis / IMemoryCache |
+| Validation | FluentValidation 12.1.1 |
+| Logging | Serilog 10.0.0 + Grafana Loki sink |
+| Observability | OpenTelemetry (OTLP, Prometheus, traces) |
+| Cache | Redis (StackExchange.Redis 2.12.14) / IMemoryCache |
 | Database | PostgreSQL |
+| Payments | Stripe.net 47.0.0 |
+| Audit | Audit.NET EF 25.0.4 |
 
 ## Key Patterns
 
-**CQRS**: Commands and Queries each live in their own folder with all related files together (`Command`, `Handler`, `Validator` in one folder). Reads use Dapper; writes use EF Core repositories + UnitOfWork.
+**CQRS**: Commands and Queries each live in their own folder — one file per feature containing the record, validator, and handler together. Reads use Dapper; writes use EF Core repositories + UnitOfWork. Handlers implement `IHandler<TRequest, TResponse>` and are injected directly into endpoint lambdas — no dispatcher.
 
 **Result pattern**: All handlers return `Result<T>` or `PagedResult<T>` — never throw for business failures.
 
-**ValidationBehavior**: FluentValidation runs in the MediatR pipeline before every handler automatically.
+**Validation**: `ValidationFilter` (endpoint filter) runs FluentValidation on every bound request argument before the handler executes. Throws `ValidationException` on failure — `ExceptionHandlerMiddleware` maps this to 400.
 
 **Endpoint structure**: Each endpoint is a static class with a `Map` method. Register in `EndpointExtensions`.
 
@@ -89,7 +92,7 @@ Each endpoint lives in its own file (e.g., `CreateCourseEndpoint.cs`) inside the
 
 Uses native ASP.NET Identity — no custom permission entities:
 - `IdentityRole` → Role (Admin, Instructor, Student)
-- `IdentityRoleClaim` → Permission (type: `"permission"`, value: `"Course:Create"`)
+- `IdentityRoleClaim` → Permission (type: resource, value: operation)
 - `IdentityUserRole` → User → Role assignment
 
 **Always use `.RequireAuthorization(x => x.RequireClaim(...))` — never `.RequireAuthorization(policyName)` or `.RequireClaim()`:**
@@ -113,22 +116,36 @@ Permissions are stored as `Claim(resource, operation)` — e.g. type `"Course"`,
 
 Roles are always called **Roles** (not profiles) in code, API routes, and documentation. Default roles are auto-seeded at startup via `IamSeed`.
 
+**Resources (16):** Auth, Course, Module, Lesson, Enrollment, Certificate, Quiz, Review, Forum, Coupon, Payment, Subscription, Affiliate, Instructor, Notification, Role, User  
+**Operations:** Create, Read, Update, Delete (not all ops apply to every resource — see `Resources.cs`)
+
+**Custom authorization:** `ActiveSubscriptionRequirement` — checks `Course.IsFree == true` OR user has active/trialing subscription. Used on course access endpoints.
+
 ## Domain Model
 
 Entities and their key behaviors:
 
 | Entity | Behavior methods |
 |---|---|
-| `Course` | `Publish()`, `Archive()`, `SetPromotion(price, expiresAt)` |
-| `Enrollment` | `CompleteLesson(lessonId)`, `CalculateProgress(totalLessons)`, `IsEligibleForCertificate(totalLessons)` |
-| `Coupon` | `IsValid()`, `Apply(price)` |
-| `Review` | Rating (1–5) + comment; one per enrolled student per course |
-| `ForumPost` | `AddReply(reply)` — supports nested replies |
-| `Audit` | Change tracking (entity, action, userId, timestamp) |
+| `Course` | `Create()`, `AddModule()`, `RemoveModule()`, `Publish()`, `Archive()`, `Update()`, `TotalDuration()` |
+| `Module` | `Create()`, `AddLesson()`, `RemoveLesson()`, `UpdateTitle()`, `FindLesson()` |
+| `Lesson` | `Create()`, `Update()`, `SetLessonType()`, `TogglePublished()` |
+| `Enrollment` | `Create()`, `CompleteLesson()`, `CalculateProgress()`, `IsEligibleForCertificate()`, `AddOrUpdateProgress()`, `Complete()`, `Cancel()` |
+| `LessonProgress` | `Create()`, `UpdateWatchedSeconds()` |
+| `Certificate` | `Create()`, `Verify()` |
+| `Coupon` | `Create()`, `IsValid()`, `Apply()`, `Deactivate()` |
+| `Review` | `Create()`, `Update()`, `Delete()` — rating 1–5; one per enrolled student per course |
+| `ForumPost` | `Create()`, `AddReply()`, `Delete()` — nested replies |
+| `Subscription` | `Create()`, `SyncFromStripe()`, `MarkCanceled()`, `GrantsAccess()` |
+| `SubscriptionPlan` | `Create()`, `Update()`, `Deactivate()` |
+| `Payment` | `Create()`, `MarkProcessed()`, `MarkFailed()` |
+| `StripeWebhookEvent` | `Create()`, `MarkProcessed()` |
+| `Audit` / `AuditLog` | Change tracking (entity, action, userId, timestamp) |
+| `AuthEvent` | Authentication event tracking |
 
 Hierarchy: `Course` → `Module` → `Lesson`; `Enrollment` → `LessonProgress`, `Certificate`.
 
-Enums: `CourseStatus`, `CourseLevel`, `EnrollmentStatus`, `LessonType`, `CouponType`, `PaymentStatus`, `NotificationType`, `SubscriptionStatus`.
+Enums: `CourseStatus`, `CourseLevel`, `EnrollmentStatus`, `LessonType`, `CouponType`, `PaymentStatus`, `NotificationType`, `SubscriptionStatus`, `BillingInterval`.
 
 Domain entities have private setters; all mutations go through methods. Business rules live inside entities.
 
@@ -147,6 +164,7 @@ All auth flows use ASP.NET Identity:
 | `POST /api/auth/change-password` | Authenticated password change |
 | `POST /api/auth/confirm-email` | Confirm email with token |
 | `POST /api/auth/resend-confirmation` | Resend confirmation email |
+| `PUT /api/auth/profile` | Update profile (authenticated) |
 | `GET /api/auth/external-login/{provider}` | Initiate Google/Facebook OAuth2 |
 | `GET /api/auth/external-login-callback` | OAuth2 callback — create/link account, return JWT |
 
@@ -177,11 +195,26 @@ Required `appsettings.json` keys:
     "From": "noreply@yamflow.com",
     "SmtpHost": "", "SmtpPort": 587,
     "SmtpUser": "", "SmtpPass": ""
-  }
+  },
+  "Stripe": {
+    "SecretKey": "sk_...",
+    "PublishableKey": "pk_...",
+    "WebhookSecret": "whsec_..."
+  },
+  "Cors": {
+    "Origins": ["http://localhost:3000", "http://localhost:5173"]
+  },
+  "AppUrl": "http://localhost:3000",
+  "LOKI_URL": "http://localhost:3100",
+  "LOG_APP_LABEL": "yamiflow-api",
+  "OTEL_SERVICE_NAME": "yamiflow-api",
+  "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
 }
 ```
 
 `appsettings.Development.json` uses `yamflow_dev` database, debug logging, and EF SQL logging.
+
+**Note:** Stripe plan IDs are seeded via `SeedExtensions` (not stored in appsettings). Frontend uses `NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID` and `NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID` env vars.
 
 ## What Is Implemented
 
@@ -203,11 +236,14 @@ Required `appsettings.json` keys:
 | Course Promotion: SetPromotion | Complete | Time-limited promotional price |
 | Admin Dashboard: Stats, ListUsers, ToggleUserStatus, UpdateUser | Complete | |
 | Instructor Dashboard: MyCourses, Stats, Revenue, Students | Complete | |
-| Audit trail | Complete | Migration `AddAuditTable` (2026-04-16); Audit.NET EF integration via `PostgresAuditDataProvider` |
+| Audit trail | Complete | Audit.NET EF 25.0.4 via `PostgresAuditDataProvider` |
 | Dapper read queries | Complete | All queries use Dapper, not EF Core |
-| Email service | Stub (`NoOpEmailService`) | Replace with real SMTP/SendGrid impl |
+| Subscriptions: Checkout, Cancel, GetCurrent, ListPlans, Webhook | Complete | Stripe recurring billing (monthly + annual) |
+| Payments: History | Complete | Dapper read query |
+| OpenTelemetry observability | Complete | OTLP traces + Prometheus metrics |
+| Serilog + Grafana Loki | Complete | Structured logging with Loki sink |
+| Email service | Stub (`NoOpEmailService`) | `SmtpEmailService` exists — needs config |
 | Payments: InitiatePayment | Stub | Returns mock response — needs Stripe/PayPal |
-| Subscriptions: Checkout, Cancel, Webhook | Complete | Stripe recurring billing (monthly + annual); see below |
 | Quizzes: Create, AddQuestion, Submit, Delete, Get | Stub | Models + validators done; handlers don't persist |
 | Notifications: MarkRead, MarkAllRead, List | Stub | Handlers return success without DB ops |
 | Affiliates: CreateLink, GetStats | Stub | Generates code but doesn't persist |
@@ -215,14 +251,18 @@ Required `appsettings.json` keys:
 
 ## Database Migrations
 
-Three migrations applied (project in `Infrastructure`):
+All migrations in `Infrastructure` project:
 
-| Migration | Date | Content |
+| Migration | Timestamp | Content |
 |---|---|---|
-| `InitialCreate` | 2026-04-11 | Core schema: users, courses, modules, lessons, enrollments, certificates, coupons |
-| `AddReviewsForumPromotion` | 2026-04-13 | Reviews, ForumPosts, Course promotional price fields |
-| `AddAuditTable` | 2026-04-16 | Audit change-tracking table |
-| `AddSubscriptionAndIsFree` | 2026-04-17 | `Subscriptions` table; `Course.IsFree` column |
+| `InitialCreate` | 20260411130225 | Core schema: users, courses, modules, lessons, enrollments, certificates, coupons |
+| `AddReviewsForumPromotion` | 20260413061439 | Reviews, ForumPosts, Course promotional price fields |
+| `AddAuditTable` | 20260416164449 | Audit change-tracking table |
+| `AddAuditSchema` | 20260417125835 | Audit schema refactor |
+| `RenameAuditLogEventTypeToSource` | 20260417131958 | AuditLog column rename |
+| `MakeTransactionIdRequired` | 20260417132854 | TransactionId NOT NULL constraint |
+| `RemovePrice` | 20260418150548 | Remove legacy price column |
+| `AddSubscriptionsAndPayments` | 20260418154918 | Subscriptions table, Course.IsFree, Payment & SubscriptionPlan tables |
 
 ## Audit.NET Integration
 
@@ -248,84 +288,94 @@ Identity type → table name reference:
 
 The platform uses a **Netflix-style subscription** model — no per-course purchases.
 
-**Access rule:** a user can access a course if `Course.IsFree == true` OR they have an active/trialing subscription.
+**Access rule:** user can access course if `Course.IsFree == true` OR they have an active/trialing subscription.
 
-**Stripe integration** (Stripe.net v51):
-- `POST /api/subscriptions/checkout` — creates a Stripe Checkout Session and returns `{ checkoutUrl }`
+**Stripe integration** (Stripe.net v47):
+- `POST /api/subscriptions/checkout` — creates Stripe Checkout Session, returns `{ checkoutUrl }`
 - `POST /api/subscriptions/cancel` — cancels at period end via `CancelAtPeriodEnd`
 - `GET /api/subscriptions/current` — returns current `Subscription` row or `null`
+- `GET /api/subscriptions/plans` — lists available subscription plans
 - `POST /api/webhooks/stripe` — handles `customer.subscription.created/updated/deleted` and `invoice.payment_failed`
 
-**Stripe.net v51 breaking changes to remember:**
+**Stripe.net v47 API notes:**
 - `Subscription.CurrentPeriodEnd` was moved to `SubscriptionItem` — access via `sub.Items?.Data?.FirstOrDefault()?.CurrentPeriodEnd`
 - `Invoice.SubscriptionId` removed — use `invoice.Parent?.SubscriptionDetails?.SubscriptionId`
-
-**`appsettings.json` Stripe keys:**
-```json
-{
-  "Stripe": {
-    "SecretKey": "sk_...",
-    "WebhookSecret": "whsec_...",
-    "PlanMonthlyId": "price_...",
-    "PlanAnnualId": "price_..."
-  }
-}
-```
 
 **`SubscriptionStatus` enum:** `Active`, `Cancelled`, `Expired`, `Trialing`, `PastDue`
 
 **`ICourseAccessService.CanAccessAsync(userId, courseId)`** — checks `Course.IsFree` OR active subscription in a single Dapper query.
 
-## Frontend (web/)
+## Observability
 
-Located at `/web/` — Next.js 16 App Router with TypeScript, TanStack Query v5, Zustand, Axios.
+**OpenTelemetry** (`Extensions/OpenTelemetryExtensions.cs`):
+- Traces: ASP.NET Core, EF Core, HttpClient, StackExchangeRedis → OTLP exporter (port 4317)
+- Metrics: ASP.NET Core, Process, Runtime, StackExchangeRedis → Prometheus exporter
+
+**Serilog** (`Extensions/LoggingExtensions.cs`):
+- Enrichers: Environment, Process, Thread, Span, Exceptions
+- Sinks: Console + Grafana Loki (`LOKI_URL`)
+- Label: `LOG_APP_LABEL`
+
+## Frontend (web-client/)
+
+Located at `/web-client/` — Next.js 15.3.1 App Router with TypeScript, React 19, TanStack Query v5, Zustand v5, Axios, Zod, react-hook-form.
 
 ```
-web/src/
-  app/                     → Next.js App Router (route files only — page.tsx wrappers)
-    layout.tsx             → Root layout + Providers
-    providers.tsx          → QueryClientProvider + Toaster
-    page.tsx               → /  (LandingPage)
-    login/page.tsx         → /login
-    register/page.tsx      → /register
-    forgot-password/       → /forgot-password
-    reset-password/        → /reset-password
-    courses/               → /courses (public)
-      [id]/                → /courses/:id (public)
-        reviews/           → /courses/:id/reviews
-    (protected)/           → Auth-guarded layout
-      layout.tsx           → ProtectedRoute wrapper
-      dashboard/           → /dashboard
-      enrollments/         → /enrollments
-      subscriptions/       → /subscriptions
+web-client/src/
+  app/                         → Next.js App Router (route files only — page.tsx wrappers)
+    layout.tsx                 → Root layout + Providers
+    providers.tsx              → QueryClientProvider + Toaster
+    page.tsx                   → /  (LandingPage)
+    login/page.tsx             → /login
+    register/page.tsx          → /register
+    forgot-password/           → /forgot-password
+    reset-password/            → /reset-password
+    confirm-email/             → /confirm-email
+    courses/                   → /courses (public)
+      [id]/                    → /courses/:id (public)
+        reviews/               → /courses/:id/reviews
+    (protected)/               → Auth-guarded layout
+      layout.tsx               → ProtectedRoute wrapper
+      dashboard/               → /dashboard
+      enrollments/             → /enrollments
+        my/                    → /enrollments/my
+      payments/                → /payments
+      subscriptions/           → /subscriptions
       subscription/
-        success/           → /subscription/success  (post-Stripe redirect)
-        cancelled/         → /subscription/cancelled
-      courses/[id]/learn/  → /courses/:id/learn
-      account/             → /account
-      admin/               → /admin
-      instructor/          → /instructor
-        courses/[id]/      → /instructor/courses/:id
-      forum/               → /forum
-        [id]/              → /forum/:id
-      notifications/       → /notifications
-      payments/            → /payments
-      coupons/             → /coupons
-      quizzes/             → /quizzes
-      affiliates/          → /affiliates
-      auth/change-password/
-  pages/                   → Actual page component implementations
-  hooks/
-    useSubscription.ts     → useSubscription, useCreateCheckout, useCancelSubscription
-  services/
-    subscription.service.ts
+        success/               → /subscription/success  (post-Stripe redirect)
+        cancelled/             → /subscription/cancelled
+      courses/[id]/learn/      → /courses/:id/learn
+      account/                 → /account
+        profile/               → /account/profile
+        change-password/       → /account/change-password (also /auth/change-password)
+      admin/                   → /admin
+      instructor/              → /instructor
+        courses/[id]/          → /instructor/courses/:id
+      forum/                   → /forum
+        [id]/                  → /forum/:id
+      notifications/           → /notifications
+      coupons/                 → /coupons
+      quizzes/                 → /quizzes
+      affiliates/              → /affiliates
+  pages/                       → Actual page component implementations
+  hooks/                       → useAuth, useAdmin, useCourses, useEnrollments, useForum,
+                                  useIam, useInstructor, useNotifications, useProfile,
+                                  useReviews, useSubscription, useCoupons, useAuthRedirect
+  services/                    → auth, admin, course, enrollment, forum, iam, instructor,
+                                  notification, profile, review, subscription, coupon
+  store/
+    authStore.ts               → Zustand auth state
   types/
-    subscription.ts        → SubscriptionStatus, Subscription, CheckoutSessionResponse
+    auth.ts, course.ts, enrollment.ts, subscription.ts
+  lib/
+    axios.ts                   → Axios instance with auth interceptors
+    publicApi.ts               → Unauthenticated Axios instance
+    queryClient.ts             → React Query client setup
 ```
 
 **Navigation:** use `useRouter`, `useParams`, `useSearchParams` from `next/navigation`; `Link` from `next/link`. No `react-router-dom`.
 
-**Subscription env vars (frontend):**
+**Frontend env vars:**
 ```
 NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID=price_...
 NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID=price_...
@@ -333,10 +383,18 @@ NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID=price_...
 
 **Course access in UI:** `course.isFree || hasActiveSubscription` → enroll/start learning; otherwise → redirect to `/subscriptions`.
 
+**Key package versions:**
+- next: 15.3.1, react: 19.0.0
+- @tanstack/react-query: 5.56.2, zustand: 5.0.0
+- @stripe/react-stripe-js: 6.2.0, @stripe/stripe-js: 9.2.0
+- react-hook-form: 7.53.0, @hookform/resolvers: 3.9.0, zod: 3.23.8
+- axios: 1.7.7, sonner: 2.0.7, tailwindcss: 4
+
 ## Adding New Features
 
-- **New Command**: add folder `Application/Commands/{Feature}/{ActionName}/` containing `{Action}Command.cs`, `{Action}Handler.cs`, `{Action}Validator.cs`.
-- **New Query**: add folder `Application/Queries/{Feature}/` — use Dapper in the handler, not EF Core.
+- **New Command**: add folder `Application/Commands/{Feature}/` — single file with `{Action}Command` (record), `{Action}Validator` (FluentValidation), `{Action}Handler` (implements `IHandler<TCommand, Result<TResponse>>`). No MediatR.
+- **New Query**: add folder `Application/Queries/{Feature}/` — same single-file pattern; handler uses Dapper, not EF Core.
 - **New Endpoint**: static class in `API/Endpoints/{Feature}/`, register via `EndpointExtensions`.
 - **New Repository**: interface in `Domain/Interfaces/`, implementation in `Infrastructure/Persistence/Repositories/`, register in `ServiceExtensions`.
 - **New Permission**: add constant to `Application/IAM/Constants/Resources.cs`, wire in `IamSeed`.
+- **New Migration**: run from `src/Ims.YamiFlow.API` — `dotnet ef migrations add <Name> --project ../Ims.YamiFlow.Infrastructure`.
