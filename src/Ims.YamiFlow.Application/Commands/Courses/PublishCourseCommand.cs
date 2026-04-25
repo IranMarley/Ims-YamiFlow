@@ -1,4 +1,6 @@
 
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+
 namespace Ims.YamiFlow.Application.Commands.Courses;
 
 public record PublishCourseCommand(Guid CourseId, string InstructorId);

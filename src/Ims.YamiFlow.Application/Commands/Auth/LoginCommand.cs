@@ -1,7 +1,8 @@
 using FluentValidation;
 using Ims.YamiFlow.Domain.Constants;
 using Ims.YamiFlow.Domain.Entities;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Services;
 
 namespace Ims.YamiFlow.Application.Commands.Auth;
 

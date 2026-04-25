@@ -1,7 +1,8 @@
-using Ims.YamiFlow.Application.Commands.Subscriptions;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Enums;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;

@@ -1,4 +1,6 @@
 
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+
 namespace Ims.YamiFlow.Application.Commands.Enrollments;
 
 public record CancelEnrollmentCommand(Guid EnrollmentId, string StudentId);

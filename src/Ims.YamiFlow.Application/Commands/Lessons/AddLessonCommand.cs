@@ -1,4 +1,5 @@
 using FluentValidation;
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
 
 namespace Ims.YamiFlow.Application.Commands.Lessons;
 

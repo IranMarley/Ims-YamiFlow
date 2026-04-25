@@ -1,4 +1,6 @@
 
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+
 namespace Ims.YamiFlow.Application.Queries.Subscriptions;
 
 public record PlanItem(

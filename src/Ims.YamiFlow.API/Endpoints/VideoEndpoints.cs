@@ -3,7 +3,8 @@ using Ims.YamiFlow.Application.Commands.Videos;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Videos;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Infrastructure.Services.Media;
 using Microsoft.Extensions.Options;
 

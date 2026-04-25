@@ -1,6 +1,7 @@
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
 
 namespace Ims.YamiFlow.Application.Commands.Certificates;
 

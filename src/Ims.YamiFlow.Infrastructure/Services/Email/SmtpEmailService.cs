@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Mail;
-using Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

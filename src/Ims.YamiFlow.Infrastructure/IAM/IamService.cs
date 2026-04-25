@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.IAM.Constants;
-using Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Dtos;
+
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

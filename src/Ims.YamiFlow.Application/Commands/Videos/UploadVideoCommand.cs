@@ -1,7 +1,9 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 
 namespace Ims.YamiFlow.Application.Commands.Videos;
 

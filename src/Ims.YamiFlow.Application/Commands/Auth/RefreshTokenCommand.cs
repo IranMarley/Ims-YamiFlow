@@ -1,4 +1,6 @@
 
+using Ims.YamiFlow.Domain.Interfaces.Services;
+
 namespace Ims.YamiFlow.Application.Commands.Auth;
 
 public record RefreshTokenCommand(string RefreshToken);

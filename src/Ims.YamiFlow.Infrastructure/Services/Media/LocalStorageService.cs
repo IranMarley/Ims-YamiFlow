@@ -1,4 +1,4 @@
-using Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 

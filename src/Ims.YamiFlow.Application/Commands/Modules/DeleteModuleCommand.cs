@@ -1,4 +1,6 @@
 
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+
 namespace Ims.YamiFlow.Application.Commands.Modules;
 
 public record DeleteModuleCommand(Guid CourseId, Guid ModuleId, string InstructorId);

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
-using Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Ims.YamiFlow.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

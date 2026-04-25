@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Ims.YamiFlow.API.Authorization;

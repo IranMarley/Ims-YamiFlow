@@ -2,7 +2,8 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Subscriptions;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Subscriptions;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Services;
 
 namespace Ims.YamiFlow.API.Endpoints;
 

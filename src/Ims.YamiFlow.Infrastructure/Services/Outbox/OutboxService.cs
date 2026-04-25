@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Ims.YamiFlow.Domain.Entities;
-using Ims.YamiFlow.Domain.Interfaces;
+
+using Ims.YamiFlow.Domain.Interfaces.Services;
 using Ims.YamiFlow.Infrastructure.Persistence.Context;
 
 namespace Ims.YamiFlow.Infrastructure.Services.Outbox;
