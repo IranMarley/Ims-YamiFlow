@@ -1,8 +1,7 @@
+using Ims.YamiFlow.Domain.Dtos;
+using Ims.YamiFlow.Domain.Interfaces.Services;
+
 namespace Ims.YamiFlow.Domain.Interfaces;
-
-public record AuthTokens(string AccessToken, string RefreshToken, DateTime AccessTokenExpiry);
-
-public record AppUserDto(string Id, string Email, string FullName, bool IsActive, bool EmailConfirmed);
 
 public interface IAuthUserService
 {

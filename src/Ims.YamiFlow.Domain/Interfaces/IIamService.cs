@@ -1,7 +1,6 @@
-namespace Ims.YamiFlow.Domain.Interfaces;
+using Ims.YamiFlow.Domain.Dtos;
 
-public record RoleDto(string Id, string Name, string? Description);
-public record RolePermissionDto(string Resource, string Operation);
+namespace Ims.YamiFlow.Domain.Interfaces;
 
 public interface IIamService
 {
