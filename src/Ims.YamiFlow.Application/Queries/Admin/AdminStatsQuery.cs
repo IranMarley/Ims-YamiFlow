@@ -92,7 +92,7 @@ public class ListUsersHandler(IDbConnectionFactory db)
                 STRING_AGG(r."Name", ',') AS RoleNames
             FROM "AspNetUsers" u
             LEFT JOIN "AspNetUserRoles" ur ON ur."UserId" = u."Id"
-            LEFT JOIN "AspNetRoles"     r  ON r."Id"     = ur."RoleId"
+            LEFT JOIN "AspNetRoles"     r  ON r."Id" = ur."RoleId"
             WHERE @Search IS NULL
                OR u."Email"    ILIKE '%' || @Search || '%'
                OR u."FullName" ILIKE '%' || @Search || '%'

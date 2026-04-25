@@ -57,7 +57,7 @@ public class GetProgressHandler(IDbConnectionFactory db)
             FROM "Modules" m
             INNER JOIN "Lessons" l ON l."ModuleId" = m."Id"
             LEFT  JOIN "LessonProgresses" lp ON lp."EnrollmentId" = @EnrollmentId
-                                             AND lp."LessonId"    = l."Id"
+                                             AND lp."LessonId" = l."Id"
             WHERE m."CourseId" = @CourseId
             ORDER BY m."Order", l."Order"
             """;

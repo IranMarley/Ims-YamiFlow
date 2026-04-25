@@ -44,7 +44,7 @@ public class GetMyEnrollmentsHandler(IDbConnectionFactory db)
                    e."EnrolledAt"                                       AS EnrolledAt,
                    e."CompletedAt"                                      AS CompletedAt
             FROM "Enrollments" e
-            INNER JOIN "Courses"  c  ON c."Id"            = e."CourseId"
+            INNER JOIN "Courses"  c  ON c."Id" = e."CourseId"
             LEFT  JOIN "Modules"  m  ON m."CourseId"      = c."Id"
             LEFT  JOIN "Lessons"  l  ON l."ModuleId"      = m."Id"
             LEFT  JOIN "LessonProgresses" lp ON lp."EnrollmentId" = e."Id"

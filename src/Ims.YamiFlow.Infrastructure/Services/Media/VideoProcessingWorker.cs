@@ -39,7 +39,7 @@ public sealed class VideoProcessingWorker(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var ffmpeg  = scope.ServiceProvider.GetRequiredService<FFmpegService>();
+        var ffmpeg = scope.ServiceProvider.GetRequiredService<FFmpegService>();
         var storage = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
 
         db.AuditDisabled = true;

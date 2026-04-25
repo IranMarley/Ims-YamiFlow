@@ -103,7 +103,7 @@ public static class VideoEndpoints
         if (filePath.Contains(".."))
             return Results.BadRequest();
 
-        var root     = storageOpts.Value.RootPath;
+        var root = storageOpts.Value.RootPath;
         var fullPath = Path.Combine(root, "videos", lessonId.ToString(), "hls",
             filePath.Replace('/', Path.DirectorySeparatorChar));
 

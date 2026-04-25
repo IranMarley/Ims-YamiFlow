@@ -53,7 +53,7 @@ public class ListCoursesHandler(IDbConnectionFactory db)
                    c."PublishedAt"         AS PublishedAt
             FROM "Courses" c
             LEFT JOIN "Enrollments" e  ON e."CourseId" = c."Id"
-            LEFT JOIN "AspNetUsers"  u ON u."Id"       = c."InstructorId"
+            LEFT JOIN "AspNetUsers"  u ON u."Id" = c."InstructorId"
             {where}
             GROUP BY c."Id", u."FullName"
             ORDER BY c."PublishedAt" DESC

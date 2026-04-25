@@ -9,7 +9,7 @@ public sealed class FFmpegService(
     IOptions<FfmpegOptions> options,
     ILogger<FFmpegService> logger)
 {
-    private readonly string _ffmpeg  = options.Value.FfmpegPath;
+    private readonly string _ffmpeg = options.Value.FfmpegPath;
     private readonly string _ffprobe = options.Value.FfprobePath;
 
     public async Task<int> GetDurationAsync(string inputPath, CancellationToken ct = default)
@@ -67,8 +67,7 @@ public sealed class FFmpegService(
 
     private static async Task WriteMasterPlaylistAsync(string outputDir)
     {
-        const string master =
-            "#EXTM3U\n" +
+        const string master = "#EXTM3U\n" +
             "#EXT-X-VERSION:3\n" +
             "#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360\n" +
             "360/stream.m3u8\n" +
@@ -91,9 +90,9 @@ public sealed class FFmpegService(
                 FileName = binary,
                 Arguments = args,
                 RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-                UseShellExecute        = false,
-                CreateNoWindow         = true
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
             }
         };
 

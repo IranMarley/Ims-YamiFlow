@@ -19,8 +19,7 @@ public class IamSeed(
     // Permissions stored as Claim(Type: Resource, Value: Operation)
     private static readonly Dictionary<string, (string Resource, string Operation)[]> DefaultPermissions = new()
     {
-        ["Admin"] =
-        [
+        ["Admin"] = [
             ("Course", "Create"), ("Course", "Read"), ("Course", "Update"), ("Course", "Delete"),
             ("Module", "Create"), ("Module", "Read"), ("Module", "Update"), ("Module", "Delete"),
             ("Lesson", "Create"), ("Lesson", "Read"), ("Lesson", "Update"), ("Lesson", "Delete"),
@@ -38,8 +37,7 @@ public class IamSeed(
             ("Role", "Create"), ("Role", "Read"), ("Role", "Update"), ("Role", "Delete"),
             ("User", "Read"), ("User", "Update")
         ],
-        ["Instructor"] =
-        [
+        ["Instructor"] = [
             ("Course", "Create"), ("Course", "Read"), ("Course", "Update"),
             ("Module", "Create"), ("Module", "Read"), ("Module", "Update"), ("Module", "Delete"),
             ("Lesson", "Create"), ("Lesson", "Read"), ("Lesson", "Update"), ("Lesson", "Delete"),
@@ -52,8 +50,7 @@ public class IamSeed(
             ("Instructor", "Read"),
             ("Notification", "Read")
         ],
-        ["Student"] =
-        [
+        ["Student"] = [
             ("Course", "Read"),
             ("Lesson", "Read"),
             ("Enrollment", "Create"), ("Enrollment", "Read"),

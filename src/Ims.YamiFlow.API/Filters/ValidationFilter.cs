@@ -4,8 +4,7 @@ namespace Ims.YamiFlow.API.Filters;
 
 public sealed class ValidationFilter(IServiceProvider sp) : IEndpointFilter
 {
-    private static readonly HashSet<Type> SkippedTypes =
-    [
+    private static readonly HashSet<Type> SkippedTypes = [
         typeof(string), typeof(Guid), typeof(CancellationToken),
         typeof(HttpContext), typeof(HttpRequest), typeof(HttpResponse)
     ];

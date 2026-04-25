@@ -20,8 +20,7 @@ public static class Resources
     public const string Role = "Role";
     public const string User = "User";
 
-    public static readonly IReadOnlyList<string> All =
-    [
+    public static readonly IReadOnlyList<string> All = [
         Course, Module, Lesson, Enrollment, Certificate, Quiz,
         Review, Forum, Coupon, Payment, Subscription, Affiliate,
         Instructor, Notification, Role, User
