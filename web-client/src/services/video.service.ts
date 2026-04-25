@@ -40,4 +40,13 @@ export const videoService = {
     const response = await api.get<VideoJobStatus>(`/api/video-jobs/${jobId}`)
     return response.data
   },
+
+  async getJobByLesson(lessonId: string): Promise<VideoJobStatus | null> {
+    try {
+      const response = await api.get<VideoJobStatus>(`/api/lessons/${lessonId}/video-job`)
+      return response.data
+    } catch {
+      return null
+    }
+  },
 }

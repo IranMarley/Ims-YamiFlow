@@ -30,6 +30,12 @@ public class Lesson
     public void RemoveFreePreview() => IsFreePreview = false;
     public void Reorder(int newOrder) => Order = newOrder;
 
+    public void ChangeModule(Guid newModuleId, int newOrder)
+    {
+        ModuleId = newModuleId;
+        Order = newOrder;
+    }
+
     public void UpdateContent(string? contentUrl, int durationSeconds)
     {
         ContentUrl = contentUrl;

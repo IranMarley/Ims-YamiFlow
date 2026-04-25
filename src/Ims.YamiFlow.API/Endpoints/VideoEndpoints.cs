@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Videos;
-using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Videos;
-
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Infrastructure.Services.Media;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +27,12 @@ public static class VideoEndpoints
             .WithTags(Resources.Lesson)
             .WithName("GetVideoJobStatus");
 
+        // ── Latest job by lesson ───────────────────────────────────────────────
+        app.MapGet("/api/lessons/{lessonId:guid}/video-job", GetJobByLesson)
+            .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Update))
+            .WithTags(Resources.Lesson)
+            .WithName("GetVideoJobByLesson");
+
         // ── Stream manifest ────────────────────────────────────────────────────
         app.MapGet("/api/lessons/{lessonId:guid}/video/manifest", GetManifest)
             .RequireAuthorization(Authorization.ActiveSubscriptionRequirement.PolicyName)
@@ -48,7 +52,7 @@ public static class VideoEndpoints
         Guid courseId,
         Guid lessonId,
         IFormFile? file,
-        [FromServices] IHandler<UploadVideoCommand, Result<UploadVideoResponse>> handler,
+        [FromServices] UploadVideoHandler handler,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -70,10 +74,19 @@ public static class VideoEndpoints
 
     private static async Task<IResult> GetJobStatus(
         Guid jobId,
-        [FromServices] IHandler<GetVideoJobStatusQuery, Result<VideoJobStatusResponse>> handler,
+        [FromServices] GetVideoJobStatusHandler handler,
         CancellationToken ct)
     {
         var result = await handler.Handle(new GetVideoJobStatusQuery(jobId), ct);
+        return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
+    }
+
+    private static async Task<IResult> GetJobByLesson(
+        Guid lessonId,
+        [FromServices] GetVideoJobByLessonHandler handler,
+        CancellationToken ct)
+    {
+        var result = await handler.Handle(new GetVideoJobByLessonQuery(lessonId), ct);
         return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
     }
 

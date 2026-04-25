@@ -4,6 +4,27 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '../../store/authStore'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type Active,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import Header from '../../components/layout/Header'
 import Spinner from '../../components/ui/Spinner'
 import { api } from '../../lib/axios'
@@ -56,7 +77,7 @@ const fetchCourse = (id: string) =>
   api.get<CourseDetail>(`/api/courses/${id}`).then((r) => r.data)
 
 const updateCourseApi = (id: string, data: { title: string; description: string; isFree: boolean; level: number }) =>
-  api.put(`/api/courses/${id}`, data).then((r) => r.data)
+  api.put(`/api/courses/${id}`, data)
 
 const publishCourse = (id: string) => api.post(`/api/courses/${id}/publish`)
 const archiveCourse = (id: string) => api.post(`/api/courses/${id}/archive`)
@@ -66,8 +87,12 @@ const createCourseApi = (data: { title: string; description: string; isFree: boo
 
 const addModuleApi = (courseId: string, title: string, order: number) =>
   api.post(`/api/courses/${courseId}/modules`, { title, order })
+
 const deleteModuleApi = (courseId: string, moduleId: string) =>
   api.delete(`/api/courses/${courseId}/modules/${moduleId}`)
+
+const reorderModulesApi = (courseId: string, items: { moduleId: string; order: number }[]) =>
+  api.put(`/api/courses/${courseId}/modules/reorder`, { items })
 
 const addLessonApi = (
   courseId: string,
@@ -85,6 +110,24 @@ const updateLessonApi = (
   data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean },
 ) => api.put(`/api/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, data)
 
+const reorderLessonsApi = (
+  courseId: string,
+  moduleId: string,
+  items: { lessonId: string; order: number }[],
+) => api.put(`/api/courses/${courseId}/modules/${moduleId}/lessons/reorder`, { items })
+
+const moveLessonApi = (
+  courseId: string,
+  sourceModuleId: string,
+  lessonId: string,
+  targetModuleId: string,
+  newOrder: number,
+) =>
+  api.put(`/api/courses/${courseId}/modules/${sourceModuleId}/lessons/${lessonId}/move`, {
+    targetModuleId,
+    newOrder,
+  })
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
@@ -97,10 +140,32 @@ const STATUS_COLORS = [
 ]
 
 const VIDEO_JOB_CONFIG: Record<string, { color: string; label: string }> = {
-  Pending:    { color: 'bg-warning/15 text-warning', label: 'Queued' },
-  Processing: { color: 'bg-primary/15 text-primary', label: 'Processing…' },
-  Completed:  { color: 'bg-success/15 text-success', label: 'Ready' },
-  Dead:       { color: 'bg-danger/15 text-danger',   label: 'Failed' },
+  Pending:    { color: 'bg-warning/15 text-warning',  label: 'Queued' },
+  Processing: { color: 'bg-primary/15 text-primary',  label: 'Processing…' },
+  Completed:  { color: 'bg-success/15 text-success',  label: 'Ready' },
+  Dead:       { color: 'bg-danger/15 text-danger',    label: 'Failed' },
+}
+
+// ── Drag handle icon ───────────────────────────────────────────────────────────
+
+function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
+  return (
+    <div
+      {...listeners}
+      {...attributes}
+      className="shrink-0 flex items-center justify-center w-5 h-5 text-subtle/40 hover:text-subtle cursor-grab active:cursor-grabbing touch-none select-none"
+      title="Drag to reorder"
+    >
+      <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+        <circle cx="3" cy="2"  r="1.2" />
+        <circle cx="7" cy="2"  r="1.2" />
+        <circle cx="3" cy="7"  r="1.2" />
+        <circle cx="7" cy="7"  r="1.2" />
+        <circle cx="3" cy="12" r="1.2" />
+        <circle cx="7" cy="12" r="1.2" />
+      </svg>
+    </div>
+  )
 }
 
 // ── VideoUploadPanel ───────────────────────────────────────────────────────────
@@ -117,9 +182,9 @@ function VideoUploadPanel({
   onUpload: (lessonId: string, file: File) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const hasVideo = !!lesson.contentUrl
+  const hasVideo  = !!lesson.contentUrl
   const jobStatus = state?.jobStatus
-  const isActive = jobStatus === 'Pending' || jobStatus === 'Processing'
+  const isActive  = jobStatus === 'Pending' || jobStatus === 'Processing'
 
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -140,7 +205,6 @@ function VideoUploadPanel({
         ) : null}
       </div>
 
-      {/* Upload progress */}
       {state?.uploading && (
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-subtle">
@@ -156,7 +220,6 @@ function VideoUploadPanel({
         </div>
       )}
 
-      {/* Processing indicator */}
       {isActive && !state?.uploading && (
         <div className="flex items-center gap-2 text-xs text-subtle">
           <Spinner size="sm" />
@@ -164,14 +227,10 @@ function VideoUploadPanel({
         </div>
       )}
 
-      {/* Failed state */}
       {jobStatus === 'Dead' && (
-        <p className="text-xs text-danger">
-          Processing failed after 3 attempts. Upload a new file to retry.
-        </p>
+        <p className="text-xs text-danger">Processing failed after 3 attempts. Upload a new file to retry.</p>
       )}
 
-      {/* Ready / no video */}
       {!state?.uploading && !isActive && (
         <div className="flex items-center gap-2">
           <button
@@ -204,6 +263,8 @@ function LessonRow({
   courseId,
   expanded,
   videoState,
+  dragHandleListeners,
+  dragHandleAttributes,
   onToggle,
   onSave,
   onDelete,
@@ -214,18 +275,19 @@ function LessonRow({
   courseId: string
   expanded: boolean
   videoState: VideoUploadState | undefined
+  dragHandleListeners?: object
+  dragHandleAttributes?: object
   onToggle: () => void
   onSave: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
   onDelete: (moduleId: string, lessonId: string) => void
   onUpload: (lessonId: string, file: File) => void
 }) {
-  const [title, setTitle]           = useState(lesson.title)
-  const [type, setType]             = useState(lesson.type)
-  const [duration, setDuration]     = useState(String(lesson.durationSeconds))
+  const [title, setTitle]             = useState(lesson.title)
+  const [type, setType]               = useState(lesson.type)
+  const [duration, setDuration]       = useState(String(lesson.durationSeconds))
   const [freePreview, setFreePreview] = useState(lesson.isFreePreview)
-  const [dirty, setDirty]           = useState(false)
+  const [dirty, setDirty]             = useState(false)
 
-  // Reset draft when lesson data changes from server (e.g. after save)
   useEffect(() => {
     if (!dirty) {
       setTitle(lesson.title)
@@ -236,21 +298,21 @@ function LessonRow({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson.lessonId])
 
-  const hasActiveJob =
-    videoState?.jobStatus === 'Pending' || videoState?.jobStatus === 'Processing'
-  const jobCfg = videoState?.jobStatus ? VIDEO_JOB_CONFIG[videoState.jobStatus] : null
+  const hasActiveJob = videoState?.jobStatus === 'Pending' || videoState?.jobStatus === 'Processing'
+  const jobCfg       = videoState?.jobStatus ? VIDEO_JOB_CONFIG[videoState.jobStatus] : null
 
   return (
     <div className="border-b border-border/50 last:border-b-0">
       {/* Collapsed row */}
-      <div className="flex items-center justify-between px-5 py-2.5 hover:bg-surface-hover/20 transition-colors">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-surface-hover/20 transition-colors">
+        <DragHandle listeners={dragHandleListeners} attributes={dragHandleAttributes} />
+
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span className="text-xs text-subtle font-mono shrink-0">{lesson.order}.</span>
           <span className="text-sm text-text truncate">{lesson.title}</span>
           {lesson.isFreePreview && (
             <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">Free</span>
           )}
-          {/* Video status chip in collapsed view */}
           {videoState?.uploading ? (
             <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               Uploading {videoState.progress}%
@@ -260,16 +322,12 @@ function LessonRow({
               {jobCfg.label}
             </span>
           ) : lesson.contentUrl ? (
-            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">
-              Video
-            </span>
+            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">Video</span>
           ) : null}
         </div>
-        <div className="flex items-center gap-3 shrink-0 ml-3">
-          <button
-            onClick={onToggle}
-            className="text-xs text-subtle hover:text-text transition-colors"
-          >
+
+        <div className="flex items-center gap-3 shrink-0">
+          <button onClick={onToggle} className="text-xs text-subtle hover:text-text transition-colors">
             {expanded ? 'Close' : 'Edit'}
           </button>
           <button
@@ -347,15 +405,195 @@ function LessonRow({
           </button>
 
           {type === 0 && (
-            <VideoUploadPanel
-              courseId={courseId}
-              lesson={lesson}
-              state={videoState}
-              onUpload={onUpload}
-            />
+            <VideoUploadPanel courseId={courseId} lesson={lesson} state={videoState} onUpload={onUpload} />
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── SortableLessonRow ──────────────────────────────────────────────────────────
+
+function SortableLessonRow(props: {
+  lesson: LessonDetail
+  moduleId: string
+  courseId: string
+  expanded: boolean
+  videoState: VideoUploadState | undefined
+  onToggle: () => void
+  onSave: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onDelete: (moduleId: string, lessonId: string) => void
+  onUpload: (lessonId: string, file: File) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.lesson.lessonId,
+    data: { type: 'lesson', lessonId: props.lesson.lessonId, moduleId: props.moduleId },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1,
+      }}
+    >
+      <LessonRow
+        {...props}
+        dragHandleListeners={listeners}
+        dragHandleAttributes={attributes}
+      />
+    </div>
+  )
+}
+
+// ── LessonDragOverlay ──────────────────────────────────────────────────────────
+
+function LessonDragOverlay({ lesson }: { lesson: LessonDetail }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2.5 bg-surface border border-primary/30 rounded-xl shadow-xl">
+      <DragHandle />
+      <span className="text-xs text-subtle font-mono shrink-0">{lesson.order}.</span>
+      <span className="text-sm text-text truncate">{lesson.title}</span>
+    </div>
+  )
+}
+
+// ── ModuleDragOverlay ──────────────────────────────────────────────────────────
+
+function ModuleDragOverlay({ mod }: { mod: ModuleDetail }) {
+  return (
+    <div className="bg-surface border border-primary/30 rounded-2xl shadow-xl overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-3.5 bg-surface-hover/30">
+        <DragHandle />
+        <span className="text-xs text-subtle font-mono">{mod.order}.</span>
+        <span className="font-medium text-text text-sm">{mod.title}</span>
+        <span className="text-xs text-subtle">({mod.lessons.length} lessons)</span>
+      </div>
+    </div>
+  )
+}
+
+// ── SortableModuleCard ─────────────────────────────────────────────────────────
+
+function SortableModuleCard({
+  mod,
+  courseId,
+  expandedLesson,
+  videoStates,
+  newLessonTitle,
+  addLessonPending,
+  deleteLessonPending,
+  onDeleteModule,
+  onAddLesson,
+  onNewLessonTitleChange,
+  onToggleLesson,
+  onSaveLesson,
+  onDeleteLesson,
+  onUpload,
+}: {
+  mod: ModuleDetail
+  courseId: string
+  expandedLesson: string | null
+  videoStates: Record<string, VideoUploadState>
+  newLessonTitle: Record<string, string>
+  addLessonPending: boolean
+  deleteLessonPending: boolean
+  onDeleteModule: (moduleId: string) => void
+  onAddLesson: (moduleId: string, title: string, order: number) => void
+  onNewLessonTitleChange: (moduleId: string, value: string) => void
+  onToggleLesson: (lessonId: string) => void
+  onSaveLesson: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onDeleteLesson: (moduleId: string, lessonId: string) => void
+  onUpload: (lessonId: string, file: File) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: mod.moduleId,
+    data: { type: 'module', moduleId: mod.moduleId },
+  })
+
+  const lessonInput = newLessonTitle[mod.moduleId] ?? ''
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1,
+      }}
+      className="bg-surface border border-border rounded-2xl overflow-hidden"
+    >
+      {/* Module header */}
+      <div className="flex items-center gap-2 px-3 py-3.5 border-b border-border bg-surface-hover/30">
+        <DragHandle listeners={listeners} attributes={attributes} />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xs text-subtle font-mono shrink-0">{mod.order}.</span>
+          <span className="font-medium text-text text-sm truncate">{mod.title}</span>
+          <span className="text-xs text-subtle shrink-0">({mod.lessons.length} lessons)</span>
+        </div>
+        <button
+          onClick={() => onDeleteModule(mod.moduleId)}
+          disabled={deleteLessonPending}
+          className="text-xs text-danger hover:text-danger/70 transition-colors shrink-0"
+        >
+          Delete module
+        </button>
+      </div>
+
+      {/* Lessons */}
+      <SortableContext
+        id={mod.moduleId}
+        items={mod.lessons.map((l) => l.lessonId)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div>
+          {mod.lessons.length === 0 && (
+            <div className="px-5 py-4 text-center text-xs text-subtle/60 italic">
+              No lessons yet — drag one here or add below.
+            </div>
+          )}
+          {mod.lessons.map((lesson) => (
+            <SortableLessonRow
+              key={lesson.lessonId}
+              lesson={lesson}
+              moduleId={mod.moduleId}
+              courseId={courseId}
+              expanded={expandedLesson === lesson.lessonId}
+              videoState={videoStates[lesson.lessonId]}
+              onToggle={() => onToggleLesson(lesson.lessonId)}
+              onSave={onSaveLesson}
+              onDelete={onDeleteLesson}
+              onUpload={onUpload}
+            />
+          ))}
+        </div>
+      </SortableContext>
+
+      {/* Add lesson */}
+      <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background/40">
+        <input
+          suppressHydrationWarning
+          value={lessonInput}
+          onChange={(e) => onNewLessonTitleChange(mod.moduleId, e.target.value)}
+          placeholder="New lesson title…"
+          className="flex-1 px-3 py-1.5 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && lessonInput.trim()) {
+              onAddLesson(mod.moduleId, lessonInput, mod.lessons.length + 1)
+            }
+          }}
+        />
+        <button
+          onClick={() => onAddLesson(mod.moduleId, lessonInput, mod.lessons.length + 1)}
+          disabled={!lessonInput.trim() || addLessonPending}
+          className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
+        >
+          + Lesson
+        </button>
+      </div>
     </div>
   )
 }
@@ -375,8 +613,7 @@ export function NewCoursePage() {
   if (user?.role !== 'Instructor' && user?.role !== 'Admin') return null
 
   const mutation = useMutation({
-    mutationFn: () =>
-      createCourseApi({ title, description: desc, isFree, level }),
+    mutationFn: () => createCourseApi({ title, description: desc, isFree, level }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['instructor'] })
       router.push(`/instructor/courses/${data.courseId}`)
@@ -407,7 +644,6 @@ export function NewCoursePage() {
               className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">Description</label>
             <textarea
@@ -419,7 +655,6 @@ export function NewCoursePage() {
               className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text mb-1.5">Level</label>
@@ -434,23 +669,14 @@ export function NewCoursePage() {
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <div className="relative">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={isFree}
-                    onChange={(e) => setIsFree(e.target.checked)}
-                  />
-                  <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success peer-focus-visible:ring-2 peer-focus-visible:ring-success peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                  <input type="checkbox" className="sr-only peer" checked={isFree} onChange={(e) => setIsFree(e.target.checked)} />
+                  <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
                 </div>
                 <span className="text-sm text-text">Free course</span>
               </label>
             </div>
           </div>
-
-          {mutation.isError && (
-            <p className="text-sm text-danger">Failed to create course.</p>
-          )}
-
+          {mutation.isError && <p className="text-sm text-danger">Failed to create course.</p>}
           <button
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || !title.trim()}
@@ -473,16 +699,24 @@ export default function InstructorCoursePage() {
   const { user }    = useAuthStore()
   const queryClient = useQueryClient()
 
-  const [tab, setTab]             = useState<'details' | 'modules'>('details')
-  const [dirty, setDirty]         = useState(false)
-  const [title, setTitle]         = useState('')
-  const [desc, setDesc]           = useState('')
-  const [isFree, setIsFree]       = useState(false)
-  const [level, setLevel]         = useState(0)
-  const [newModuleTitle, setNewModuleTitle] = useState('')
-  const [newLessonTitle, setNewLessonTitle] = useState<Record<string, string>>({})
-  const [expandedLesson, setExpandedLesson] = useState<string | null>(null)
-  const [videoStates, setVideoStates] = useState<Record<string, VideoUploadState>>({})
+  // Course details state
+  const [tab, setTab]       = useState<'details' | 'modules'>('details')
+  const [dirty, setDirty]   = useState(false)
+  const [title, setTitle]   = useState('')
+  const [desc, setDesc]     = useState('')
+  const [isFree, setIsFree] = useState(false)
+  const [level, setLevel]   = useState(0)
+
+  // Module/lesson UI state
+  const [newModuleTitle, setNewModuleTitle]   = useState('')
+  const [newLessonTitle, setNewLessonTitle]   = useState<Record<string, string>>({})
+  const [expandedLesson, setExpandedLesson]   = useState<string | null>(null)
+  const [videoStates, setVideoStates]         = useState<Record<string, VideoUploadState>>({})
+
+  // Drag-and-drop state
+  const [localModules, setLocalModules]       = useState<ModuleDetail[]>([])
+  const [activeDragItem, setActiveDragItem]   = useState<Active | null>(null)
+  const dragStartModuleId                     = useRef<string | null>(null)
 
   if (user?.role !== 'Instructor' && user?.role !== 'Admin') return null
 
@@ -493,6 +727,42 @@ export default function InstructorCoursePage() {
     staleTime: 0,
   })
 
+  // Sync localModules from server (not while dragging)
+  useEffect(() => {
+    if (course && !activeDragItem) {
+      setLocalModules(course.modules)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course])
+
+  // Restore video job states for all video lessons on first course load
+  useEffect(() => {
+    if (!course) return
+    const videoLessons = course.modules
+      .flatMap((m) => m.lessons)
+      .filter((l) => l.type === 0)
+
+    videoLessons.forEach(async (lesson) => {
+      // Skip if we already have state for this lesson
+      if (videoStates[lesson.lessonId]) return
+      const job = await videoService.getJobByLesson(lesson.lessonId)
+      if (!job) return
+      // Only restore active or failed jobs; completed ones show via lesson.contentUrl
+      if (job.status === 'Completed') return
+      setVideoStates((prev) => ({
+        ...prev,
+        [lesson.lessonId]: {
+          uploading: false,
+          progress: 0,
+          jobId: job.jobId,
+          jobStatus: job.status,
+        },
+      }))
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.courseId])
+
+  // Sync course details form
   useEffect(() => {
     if (course && !dirty) {
       setTitle(course.title)
@@ -503,7 +773,7 @@ export default function InstructorCoursePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.courseId])
 
-  // Poll video jobs that are Pending or Processing
+  // Poll active video jobs
   useEffect(() => {
     const activeEntries = Object.entries(videoStates).filter(
       ([, v]) => v.jobId && (v.jobStatus === 'Pending' || v.jobStatus === 'Processing'),
@@ -527,7 +797,7 @@ export default function InstructorCoursePage() {
             toast.error('Video processing failed.')
           }
         } catch {
-          // silent — will retry next interval
+          // silent — will retry next tick
         }
       }
     }, 5000)
@@ -535,18 +805,19 @@ export default function InstructorCoursePage() {
     return () => clearInterval(interval)
   }, [videoStates, courseId, queryClient])
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['course-detail', courseId] })
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['course-detail', courseId] })
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      updateCourseApi(courseId, { title, description: desc, isFree, level }),
+    mutationFn: () => updateCourseApi(courseId, { title, description: desc, isFree, level }),
     onSuccess: () => { setDirty(false); invalidate(); toast.success('Course details saved.') },
   })
 
   const publishMutation = useMutation({
     mutationFn: () => publishCourse(courseId),
     onSuccess: () => { invalidate(); toast.success('Course published.') },
+    onError: () => toast.error('Cannot publish — ensure all modules have at least one lesson.'),
   })
 
   const archiveMutation = useMutation({
@@ -556,13 +827,19 @@ export default function InstructorCoursePage() {
 
   const addModuleMutation = useMutation({
     mutationFn: (moduleTitle: string) =>
-      addModuleApi(courseId, moduleTitle, (course?.modules.length ?? 0) + 1),
+      addModuleApi(courseId, moduleTitle, localModules.length + 1),
     onSuccess: () => { setNewModuleTitle(''); invalidate() },
   })
 
   const deleteModuleMutation = useMutation({
     mutationFn: (moduleId: string) => deleteModuleApi(courseId, moduleId),
     onSuccess: invalidate,
+  })
+
+  const reorderModulesMutation = useMutation({
+    mutationFn: (items: { moduleId: string; order: number }[]) =>
+      reorderModulesApi(courseId, items),
+    onError: () => { invalidate(); toast.error('Failed to save module order.') },
   })
 
   const addLessonMutation = useMutation({
@@ -582,9 +859,7 @@ export default function InstructorCoursePage() {
 
   const updateLessonMutation = useMutation({
     mutationFn: ({
-      moduleId,
-      lessonId,
-      data,
+      moduleId, lessonId, data,
     }: {
       moduleId: string
       lessonId: string
@@ -592,6 +867,26 @@ export default function InstructorCoursePage() {
     }) => updateLessonApi(courseId, moduleId, lessonId, data),
     onSuccess: () => { invalidate(); toast.success('Lesson saved.') },
   })
+
+  const reorderLessonsMutation = useMutation({
+    mutationFn: ({ moduleId, items }: { moduleId: string; items: { lessonId: string; order: number }[] }) =>
+      reorderLessonsApi(courseId, moduleId, items),
+    onError: () => { invalidate(); toast.error('Failed to save lesson order.') },
+  })
+
+  const moveLessonMutation = useMutation({
+    mutationFn: ({
+      sourceModuleId, lessonId, targetModuleId, newOrder,
+    }: {
+      sourceModuleId: string
+      lessonId: string
+      targetModuleId: string
+      newOrder: number
+    }) => moveLessonApi(courseId, sourceModuleId, lessonId, targetModuleId, newOrder),
+    onError: () => { invalidate(); toast.error('Failed to move lesson.') },
+  })
+
+  // ── Video upload ───────────────────────────────────────────────────────────
 
   const handleVideoUpload = async (lessonId: string, file: File) => {
     setVideoStates((prev) => ({
@@ -618,6 +913,169 @@ export default function InstructorCoursePage() {
       toast.error('Upload failed. Please try again.')
     }
   }
+
+  // ── Drag-and-drop sensors ──────────────────────────────────────────────────
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  // ── DnD handlers ──────────────────────────────────────────────────────────
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragItem(event.active)
+    if (event.active.data.current?.type === 'lesson') {
+      dragStartModuleId.current = event.active.data.current.moduleId as string
+    }
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over) return
+
+    const activeType = active.data.current?.type
+    if (activeType !== 'lesson') return
+
+    const overType = over.data.current?.type
+    if (overType !== 'lesson') return // only cross-module when over another lesson
+
+    const activeId = active.id as string
+    const overId   = over.id as string
+
+    // Find current modules using localModules (handles mid-drag state)
+    const activeModule = localModules.find((m) => m.lessons.some((l) => l.lessonId === activeId))
+    const overModule   = localModules.find((m) => m.lessons.some((l) => l.lessonId === overId))
+
+    if (!activeModule || !overModule) return
+    if (activeModule.moduleId === overModule.moduleId) return // same module — sortable handles it
+
+    // Move lesson to overModule at the overLesson's position
+    const movingLesson = activeModule.lessons.find((l) => l.lessonId === activeId)!
+    const overIndex    = overModule.lessons.findIndex((l) => l.lessonId === overId)
+
+    setLocalModules((prev) =>
+      prev.map((m) => {
+        if (m.moduleId === activeModule.moduleId) {
+          return {
+            ...m,
+            lessons: m.lessons
+              .filter((l) => l.lessonId !== activeId)
+              .map((l, i) => ({ ...l, order: i + 1 })),
+          }
+        }
+        if (m.moduleId === overModule.moduleId) {
+          const newLessons = [...m.lessons]
+          newLessons.splice(overIndex, 0, movingLesson)
+          return {
+            ...m,
+            lessons: newLessons.map((l, i) => ({ ...l, order: i + 1 })),
+          }
+        }
+        return m
+      }),
+    )
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDragItem(null)
+
+    if (!over) {
+      dragStartModuleId.current = null
+      return
+    }
+
+    const activeType = active.data.current?.type
+    const activeId   = active.id as string
+
+    // ── Module reorder ────────────────────────────────────────────────────
+    if (activeType === 'module') {
+      const oldIdx = localModules.findIndex((m) => m.moduleId === activeId)
+      const newIdx = localModules.findIndex((m) => m.moduleId === over.id)
+
+      if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+        const reordered = arrayMove(localModules, oldIdx, newIdx).map((m, i) => ({
+          ...m,
+          order: i + 1,
+        }))
+        setLocalModules(reordered)
+        reorderModulesMutation.mutate(reordered.map((m) => ({ moduleId: m.moduleId, order: m.order })))
+      }
+
+      dragStartModuleId.current = null
+      return
+    }
+
+    // ── Lesson reorder / move ─────────────────────────────────────────────
+    if (activeType === 'lesson') {
+      const startModId   = dragStartModuleId.current
+      const finalModule  = localModules.find((m) => m.lessons.some((l) => l.lessonId === activeId))
+
+      if (!finalModule) {
+        dragStartModuleId.current = null
+        return
+      }
+
+      if (finalModule.moduleId !== startModId) {
+        // Cross-module move — localModules already reflects new position from onDragOver
+        const lesson = finalModule.lessons.find((l) => l.lessonId === activeId)!
+        moveLessonMutation.mutate({
+          sourceModuleId: startModId!,
+          lessonId: activeId,
+          targetModuleId: finalModule.moduleId,
+          newOrder: lesson.order,
+        })
+        // Normalize source module orders on backend
+        const sourceModule = localModules.find((m) => m.moduleId === startModId)
+        if (sourceModule && sourceModule.lessons.length > 0) {
+          reorderLessonsMutation.mutate({
+            moduleId: startModId!,
+            items: sourceModule.lessons.map((l, i) => ({ lessonId: l.lessonId, order: i + 1 })),
+          })
+        }
+      } else {
+        // Same-module reorder — apply arrayMove
+        const overType = over.data.current?.type
+        if (overType !== 'lesson') {
+          dragStartModuleId.current = null
+          return
+        }
+        const overId = over.id as string
+        const oldIdx = finalModule.lessons.findIndex((l) => l.lessonId === activeId)
+        const newIdx = finalModule.lessons.findIndex((l) => l.lessonId === overId)
+
+        if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+          const reordered = arrayMove(finalModule.lessons, oldIdx, newIdx).map((l, i) => ({
+            ...l,
+            order: i + 1,
+          }))
+          setLocalModules((prev) =>
+            prev.map((m) =>
+              m.moduleId === finalModule.moduleId ? { ...m, lessons: reordered } : m,
+            ),
+          )
+          reorderLessonsMutation.mutate({
+            moduleId: finalModule.moduleId,
+            items: reordered.map((l) => ({ lessonId: l.lessonId, order: l.order })),
+          })
+        }
+      }
+
+      dragStartModuleId.current = null
+    }
+  }
+
+  // ── Active drag item for overlay ───────────────────────────────────────────
+  const activeDragType   = activeDragItem?.data.current?.type
+  const activeDragModule = activeDragType === 'module'
+    ? localModules.find((m) => m.moduleId === activeDragItem?.id)
+    : null
+  const activeDragLesson = activeDragType === 'lesson'
+    ? localModules.flatMap((m) => m.lessons).find((l) => l.lessonId === activeDragItem?.id)
+    : null
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isLoading || !course) {
     return (
@@ -696,7 +1154,7 @@ export default function InstructorCoursePage() {
           ))}
         </div>
 
-        {/* Details tab */}
+        {/* ── Details tab ── */}
         {tab === 'details' && (
           <div className="space-y-5">
             <div className="bg-surface border border-border rounded-2xl p-6 space-y-5">
@@ -739,7 +1197,7 @@ export default function InstructorCoursePage() {
                         checked={isFree}
                         onChange={(e) => { setIsFree(e.target.checked); setDirty(true) }}
                       />
-                      <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success peer-focus-visible:ring-2 peer-focus-visible:ring-success peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                      <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
                     </div>
                     <span className="text-sm text-text">Free course</span>
                   </label>
@@ -753,122 +1211,89 @@ export default function InstructorCoursePage() {
                 {updateMutation.isPending ? 'Saving…' : 'Save changes'}
               </button>
             </div>
-
           </div>
         )}
 
-        {/* Modules tab */}
+        {/* ── Modules tab ── */}
         {tab === 'modules' && (
-          <div className="space-y-4">
-            {course.modules.length === 0 && (
-              <div className="py-12 text-center bg-surface border border-border rounded-2xl">
-                <p className="text-subtle text-sm">No modules yet. Add one below.</p>
-              </div>
-            )}
-
-            {course.modules.map((mod) => (
-              <div key={mod.moduleId} className="bg-surface border border-border rounded-2xl overflow-hidden">
-                {/* Module header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-surface-hover/30">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-subtle font-mono">{mod.order}.</span>
-                    <span className="font-medium text-text text-sm">{mod.title}</span>
-                    <span className="text-xs text-subtle">({mod.lessons.length} lessons)</span>
-                  </div>
-                  <button
-                    onClick={() => deleteModuleMutation.mutate(mod.moduleId)}
-                    disabled={deleteModuleMutation.isPending}
-                    className="text-xs text-danger hover:text-danger/70 transition-colors"
-                  >
-                    Delete module
-                  </button>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-4">
+              {localModules.length === 0 && (
+                <div className="py-12 text-center bg-surface border border-border rounded-2xl">
+                  <p className="text-subtle text-sm">No modules yet. Add one below.</p>
                 </div>
+              )}
 
-                {/* Lessons */}
-                <div>
-                  {mod.lessons.map((lesson) => (
-                    <LessonRow
-                      key={lesson.lessonId}
-                      lesson={lesson}
-                      moduleId={mod.moduleId}
-                      courseId={courseId}
-                      expanded={expandedLesson === lesson.lessonId}
-                      videoState={videoStates[lesson.lessonId]}
-                      onToggle={() =>
-                        setExpandedLesson((prev) =>
-                          prev === lesson.lessonId ? null : lesson.lessonId,
-                        )
-                      }
-                      onSave={(moduleId, lessonId, data) =>
-                        updateLessonMutation.mutate({ moduleId, lessonId, data })
-                      }
-                      onDelete={(moduleId, lessonId) =>
-                        deleteLessonMutation.mutate({ moduleId, lessonId })
-                      }
-                      onUpload={handleVideoUpload}
-                    />
-                  ))}
-                </div>
-
-                {/* Add lesson */}
-                <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background/40">
-                  <input
-                    suppressHydrationWarning
-                    value={newLessonTitle[mod.moduleId] ?? ''}
-                    onChange={(e) =>
-                      setNewLessonTitle((prev) => ({ ...prev, [mod.moduleId]: e.target.value }))
-                    }
-                    placeholder="New lesson title…"
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (newLessonTitle[mod.moduleId] ?? '').trim()) {
-                        addLessonMutation.mutate({
-                          moduleId: mod.moduleId,
-                          lessonTitle: newLessonTitle[mod.moduleId],
-                          order: mod.lessons.length + 1,
-                        })
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() =>
-                      addLessonMutation.mutate({
-                        moduleId: mod.moduleId,
-                        lessonTitle: newLessonTitle[mod.moduleId] ?? '',
-                        order: mod.lessons.length + 1,
-                      })
-                    }
-                    disabled={!(newLessonTitle[mod.moduleId] ?? '').trim() || addLessonMutation.isPending}
-                    className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
-                  >
-                    + Lesson
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* Add module */}
-            <div className="flex gap-3 pt-2">
-              <input
-                suppressHydrationWarning
-                value={newModuleTitle}
-                onChange={(e) => setNewModuleTitle(e.target.value)}
-                placeholder="New module title…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newModuleTitle.trim())
-                    addModuleMutation.mutate(newModuleTitle)
-                }}
-              />
-              <button
-                onClick={() => addModuleMutation.mutate(newModuleTitle)}
-                disabled={!newModuleTitle.trim() || addModuleMutation.isPending}
-                className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
+              <SortableContext
+                items={localModules.map((m) => m.moduleId)}
+                strategy={verticalListSortingStrategy}
               >
-                {addModuleMutation.isPending ? '…' : '+ Module'}
-              </button>
+                {localModules.map((mod) => (
+                  <SortableModuleCard
+                    key={mod.moduleId}
+                    mod={mod}
+                    courseId={courseId}
+                    expandedLesson={expandedLesson}
+                    videoStates={videoStates}
+                    newLessonTitle={newLessonTitle}
+                    addLessonPending={addLessonMutation.isPending}
+                    deleteLessonPending={deleteLessonMutation.isPending}
+                    onDeleteModule={(moduleId) => deleteModuleMutation.mutate(moduleId)}
+                    onAddLesson={(moduleId, lessonTitle, order) =>
+                      addLessonMutation.mutate({ moduleId, lessonTitle, order })
+                    }
+                    onNewLessonTitleChange={(moduleId, value) =>
+                      setNewLessonTitle((prev) => ({ ...prev, [moduleId]: value }))
+                    }
+                    onToggleLesson={(lessonId) =>
+                      setExpandedLesson((prev) => (prev === lessonId ? null : lessonId))
+                    }
+                    onSaveLesson={(moduleId, lessonId, data) =>
+                      updateLessonMutation.mutate({ moduleId, lessonId, data })
+                    }
+                    onDeleteLesson={(moduleId, lessonId) =>
+                      deleteLessonMutation.mutate({ moduleId, lessonId })
+                    }
+                    onUpload={handleVideoUpload}
+                  />
+                ))}
+              </SortableContext>
+
+              {/* Add module */}
+              <div className="flex gap-3 pt-2">
+                <input
+                  suppressHydrationWarning
+                  value={newModuleTitle}
+                  onChange={(e) => setNewModuleTitle(e.target.value)}
+                  placeholder="New module title…"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newModuleTitle.trim())
+                      addModuleMutation.mutate(newModuleTitle)
+                  }}
+                />
+                <button
+                  onClick={() => addModuleMutation.mutate(newModuleTitle)}
+                  disabled={!newModuleTitle.trim() || addModuleMutation.isPending}
+                  className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
+                >
+                  {addModuleMutation.isPending ? '…' : '+ Module'}
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Drag overlay */}
+            <DragOverlay dropAnimation={{ duration: 150, easing: 'ease' }}>
+              {activeDragModule && <ModuleDragOverlay mod={activeDragModule} />}
+              {activeDragLesson && <LessonDragOverlay lesson={activeDragLesson} />}
+            </DragOverlay>
+          </DndContext>
         )}
       </main>
     </div>

@@ -95,7 +95,7 @@ public sealed class VideoProcessingWorker(
 
             var hlsRelative   = $"videos/{job.CourseId}/{job.LessonId}/hls/master.m3u8";
             var thumbRelative = $"videos/{job.CourseId}/{job.LessonId}/thumbnails/thumb.jpg";
-            var fileSize      = new FileInfo(inputPath).Length;
+            var fileSize = new FileInfo(inputPath).Length;
 
             // Upsert VideoAsset
             var existing = await db.VideoAssets.FirstOrDefaultAsync(a => a.LessonId == job.LessonId, ct);

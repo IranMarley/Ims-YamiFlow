@@ -52,6 +52,18 @@ public static class LessonEndpoints
         .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Delete))
         .WithName("DeleteLesson");
 
+        crud.MapPut("/{lessonId:guid}/move", async (
+            Guid courseId, Guid moduleId, Guid lessonId, [FromBody] MoveLessonRequest req,
+            MoveLessonHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
+        {
+            var result = await handler.Handle(new MoveLessonCommand(
+                courseId, lessonId, req.TargetModuleId, req.NewOrder,
+                user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
+            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
+        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Update))
+        .WithName("MoveLesson");
+
         crud.MapPut("/reorder", async (
             Guid courseId, Guid moduleId, [FromBody] ReorderLessonsRequest req,
             ReorderLessonsHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
@@ -111,3 +123,4 @@ public record UpdateLessonRequest(
 public record SaveProgressRequest(int WatchedSeconds);
 public record ReorderLessonItem(Guid LessonId, int Order);
 public record ReorderLessonsRequest(IReadOnlyList<ReorderLessonItem> Items);
+public record MoveLessonRequest(Guid TargetModuleId, int NewOrder);

@@ -29,7 +29,7 @@ public class GetVideoJobStatusHandler(IDbConnectionFactory db)
 
         var row = await conn.QueryFirstOrDefaultAsync<VideoJobStatusResponse>(
             """
-            SELECT "Id"           AS "JobId",
+            SELECT "Id" AS "JobId",
                    "LessonId",
                    "Status",
                    "RetryCount",
@@ -37,8 +37,8 @@ public class GetVideoJobStatusHandler(IDbConnectionFactory db)
                    "CreatedAt",
                    "StartedAt",
                    "CompletedAt"
-            FROM   "VideoProcessingJobs"
-            WHERE  "Id" = @JobId
+            FROM "VideoProcessingJobs"
+            WHERE "Id" = @JobId
             """,
             new { query.JobId });
 

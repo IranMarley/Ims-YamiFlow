@@ -59,6 +59,8 @@ services:
       AppUrl: http://localhost:3000
       LOKI_URL: ${LOKI_URL}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    volumes:
+      - ./video_data:/var/videos
     depends_on:
       postgres:
         condition: service_healthy
@@ -138,6 +140,7 @@ volumes:
   loki_wal_data:
   prometheus_data:
   tempo_data:
+  video_data:
 
 # ── Networks ────────────────────────────────────────
 networks:
