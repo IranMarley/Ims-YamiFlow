@@ -190,3 +190,27 @@ public class UnitOfWork(AppDbContext db) : IUnitOfWork
     public async Task<int> CommitAsync(CancellationToken ct = default)
         => await db.SaveChangesAsync(ct);
 }
+
+public class VideoProcessingJobRepository(AppDbContext db) : IVideoProcessingJobRepository
+{
+    public async Task<VideoProcessingJob?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => await db.VideoProcessingJobs.FindAsync([id], ct);
+
+    public async Task AddAsync(VideoProcessingJob job, CancellationToken ct = default)
+        => await db.VideoProcessingJobs.AddAsync(job, ct);
+
+    public void Update(VideoProcessingJob job)
+        => db.VideoProcessingJobs.Update(job);
+}
+
+public class VideoAssetRepository(AppDbContext db) : IVideoAssetRepository
+{
+    public async Task<VideoAsset?> GetByLessonIdAsync(Guid lessonId, CancellationToken ct = default)
+        => await db.VideoAssets.FirstOrDefaultAsync(a => a.LessonId == lessonId, ct);
+
+    public async Task AddAsync(VideoAsset asset, CancellationToken ct = default)
+        => await db.VideoAssets.AddAsync(asset, ct);
+
+    public void Update(VideoAsset asset)
+        => db.VideoAssets.Update(asset);
+}

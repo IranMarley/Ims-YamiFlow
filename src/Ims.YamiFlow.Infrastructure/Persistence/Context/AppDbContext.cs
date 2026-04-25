@@ -41,6 +41,8 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, string>, IAuditD
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<VideoProcessingJob> VideoProcessingJobs => Set<VideoProcessingJob>();
+    public DbSet<VideoAsset> VideoAssets => Set<VideoAsset>();
 
     private readonly DbContextHelper _auditHelper = new();
 

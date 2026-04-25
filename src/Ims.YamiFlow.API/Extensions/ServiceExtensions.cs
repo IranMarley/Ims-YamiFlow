@@ -9,6 +9,7 @@ using Ims.YamiFlow.Infrastructure.Persistence.Context;
 using Ims.YamiFlow.Infrastructure.Persistence.Repositories;
 using Ims.YamiFlow.Infrastructure.Services;
 using Ims.YamiFlow.Infrastructure.Services.Email;
+using Ims.YamiFlow.Infrastructure.Services.Media;
 using Ims.YamiFlow.Infrastructure.Services.Outbox;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -156,6 +157,22 @@ public static class ServiceExtensions
 
         // Background workers
         services.AddHostedService<OutboxWorker>();
+        services.AddHostedService<VideoProcessingWorker>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddMediaServices(
+        this IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<StorageOptions>(config.GetSection(StorageOptions.SectionName));
+        services.Configure<FfmpegOptions>(config.GetSection(FfmpegOptions.SectionName));
+
+        services.AddScoped<IStorageService, LocalStorageService>();
+        services.AddScoped<FFmpegService>();
+
+        services.AddScoped<IVideoProcessingJobRepository, VideoProcessingJobRepository>();
+        services.AddScoped<IVideoAssetRepository, VideoAssetRepository>();
 
         return services;
     }

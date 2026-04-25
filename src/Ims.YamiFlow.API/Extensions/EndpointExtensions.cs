@@ -63,6 +63,9 @@ public static class EndpointExtensions
         // ── Affiliates ────────────────────────────────
         AffiliateEndpoints.Map(api);
 
+        // ── Videos ────────────────────────────────────
+        VideoEndpoints.Map(api);
+
         // ── Stripe Webhook ────────────────────────────
         StripeWebhookEndpoint.Map(api);
     }

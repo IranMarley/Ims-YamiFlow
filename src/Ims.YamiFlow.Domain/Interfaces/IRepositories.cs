@@ -90,3 +90,17 @@ public interface IUnitOfWork
 {
     Task<int> CommitAsync(CancellationToken ct = default);
 }
+
+public interface IVideoProcessingJobRepository
+{
+    Task<VideoProcessingJob?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task AddAsync(VideoProcessingJob job, CancellationToken ct = default);
+    void Update(VideoProcessingJob job);
+}
+
+public interface IVideoAssetRepository
+{
+    Task<VideoAsset?> GetByLessonIdAsync(Guid lessonId, CancellationToken ct = default);
+    Task AddAsync(VideoAsset asset, CancellationToken ct = default);
+    void Update(VideoAsset asset);
+}

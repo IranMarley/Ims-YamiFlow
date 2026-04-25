@@ -15,6 +15,7 @@ public static class ProgramExtensions
             .AddDynamicAuthorization()
             .AddApplicationServices()
             .AddInfrastructureServices(builder.Configuration)
+            .AddMediaServices(builder.Configuration)
             .AddStripeIntegration(builder.Configuration)
             .AddCacheServices(builder.Configuration)
             .AddRateLimitingConfig()

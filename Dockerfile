@@ -22,7 +22,9 @@ WORKDIR /app
 
 COPY --from=build /app .
 
-RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Non-root user — built into .NET 10 base images
 USER $APP_UID
