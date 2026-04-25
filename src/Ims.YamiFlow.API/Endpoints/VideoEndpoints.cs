@@ -6,6 +6,7 @@ using Ims.YamiFlow.Application.Queries.Videos;
 
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Infrastructure.Services.Media;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -47,7 +48,7 @@ public static class VideoEndpoints
         Guid courseId,
         Guid lessonId,
         IFormFile? file,
-        IHandler<UploadVideoCommand, Result<UploadVideoResponse>> handler,
+        [FromServices] IHandler<UploadVideoCommand, Result<UploadVideoResponse>> handler,
         ClaimsPrincipal user,
         CancellationToken ct)
     {
@@ -69,7 +70,7 @@ public static class VideoEndpoints
 
     private static async Task<IResult> GetJobStatus(
         Guid jobId,
-        IHandler<GetVideoJobStatusQuery, Result<VideoJobStatusResponse>> handler,
+        [FromServices] IHandler<GetVideoJobStatusQuery, Result<VideoJobStatusResponse>> handler,
         CancellationToken ct)
     {
         var result = await handler.Handle(new GetVideoJobStatusQuery(jobId), ct);

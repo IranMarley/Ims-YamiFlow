@@ -38,7 +38,7 @@ public sealed class VideoProcessingWorker(
     private async Task ProcessNextAsync(CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var db      = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var ffmpeg  = scope.ServiceProvider.GetRequiredService<FFmpegService>();
         var storage = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
 
@@ -47,7 +47,7 @@ public sealed class VideoProcessingWorker(
         // Claim one pending job atomically — concurrent workers cannot pick the same row.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        var job = await db.VideoProcessingJobs
+        var jobs = await db.VideoProcessingJobs
             .FromSqlRaw("""
                 SELECT * FROM "VideoProcessingJobs"
                 WHERE "Status" = 'Pending'
@@ -55,7 +55,9 @@ public sealed class VideoProcessingWorker(
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
                 """)
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
+
+        var job = jobs.FirstOrDefault();
 
         if (job is null)
         {
