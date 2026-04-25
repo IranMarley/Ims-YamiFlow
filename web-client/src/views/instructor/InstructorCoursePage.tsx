@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuthStore } from '../../store/authStore'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
@@ -7,8 +7,10 @@ import { toast } from 'sonner'
 import Header from '../../components/layout/Header'
 import Spinner from '../../components/ui/Spinner'
 import { api } from '../../lib/axios'
+import { videoService } from '../../services/video.service'
 
-// ── Types ─────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
+
 interface LessonDetail {
   lessonId: string
   title: string
@@ -32,7 +34,7 @@ interface CourseDetail {
   slug: string
   description: string
   thumbnail: string | null
-  price: number
+  isFree: boolean
   level: number
   status: number
   instructorId: string
@@ -41,53 +43,340 @@ interface CourseDetail {
   modules: ModuleDetail[]
 }
 
-// ── Service calls ─────────────────────────────────────
+interface VideoUploadState {
+  uploading: boolean
+  progress: number
+  jobId: string | null
+  jobStatus: string | null
+}
+
+// ── API helpers ────────────────────────────────────────────────────────────────
+
 const fetchCourse = (id: string) =>
   api.get<CourseDetail>(`/api/courses/${id}`).then((r) => r.data)
 
-const setPromotion = (id: string, promotionalPrice: number | null, expiresAt: string | null) =>
-  api.put(`/api/courses/${id}/promotion`, { promotionalPrice, expiresAt })
-
-const updateCourse = (id: string, data: { title: string; description: string; price: number; level: number }) =>
+const updateCourseApi = (id: string, data: { title: string; description: string; isFree: boolean; level: number }) =>
   api.put(`/api/courses/${id}`, data).then((r) => r.data)
 
 const publishCourse = (id: string) => api.post(`/api/courses/${id}/publish`)
 const archiveCourse = (id: string) => api.post(`/api/courses/${id}/archive`)
 
-const createCourse = (data: { title: string; description: string; price: number; level: number }) =>
+const createCourseApi = (data: { title: string; description: string; isFree: boolean; level: number }) =>
   api.post<{ courseId: string }>('/api/courses', data).then((r) => r.data)
 
-const addModule    = (courseId: string, title: string, order: number) =>
+const addModuleApi = (courseId: string, title: string, order: number) =>
   api.post(`/api/courses/${courseId}/modules`, { title, order })
-const deleteModule = (courseId: string, moduleId: string) =>
+const deleteModuleApi = (courseId: string, moduleId: string) =>
   api.delete(`/api/courses/${courseId}/modules/${moduleId}`)
 
-const addLesson    = (courseId: string, moduleId: string, data: { title: string; type: number; durationSeconds: number; order: number }) =>
-  api.post(`/api/courses/${courseId}/modules/${moduleId}/lessons`, data)
-const deleteLesson = (courseId: string, moduleId: string, lessonId: string) =>
+const addLessonApi = (
+  courseId: string,
+  moduleId: string,
+  data: { title: string; type: number; durationSeconds: number; order: number },
+) => api.post(`/api/courses/${courseId}/modules/${moduleId}/lessons`, data)
+
+const deleteLessonApi = (courseId: string, moduleId: string, lessonId: string) =>
   api.delete(`/api/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`)
 
-// ── Level helpers ─────────────────────────────────────
-const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
-const STATUS_LABELS = ['Draft', 'Published', 'Archived']
-const STATUS_COLORS = ['bg-warning/15 text-warning', 'bg-success/15 text-success', 'bg-subtle/15 text-subtle']
+const updateLessonApi = (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean },
+) => api.put(`/api/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, data)
 
-// ── New Course Page ───────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
+const LESSON_TYPES = ['Video', 'Text', 'Quiz']
+const STATUS_LABELS = ['Draft', 'Published', 'Archived']
+const STATUS_COLORS = [
+  'bg-warning/15 text-warning',
+  'bg-success/15 text-success',
+  'bg-subtle/15 text-subtle',
+]
+
+const VIDEO_JOB_CONFIG: Record<string, { color: string; label: string }> = {
+  Pending:    { color: 'bg-warning/15 text-warning', label: 'Queued' },
+  Processing: { color: 'bg-primary/15 text-primary', label: 'Processing…' },
+  Completed:  { color: 'bg-success/15 text-success', label: 'Ready' },
+  Dead:       { color: 'bg-danger/15 text-danger',   label: 'Failed' },
+}
+
+// ── VideoUploadPanel ───────────────────────────────────────────────────────────
+
+function VideoUploadPanel({
+  courseId,
+  lesson,
+  state,
+  onUpload,
+}: {
+  courseId: string
+  lesson: LessonDetail
+  state: VideoUploadState | undefined
+  onUpload: (lessonId: string, file: File) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const hasVideo = !!lesson.contentUrl
+  const jobStatus = state?.jobStatus
+  const isActive = jobStatus === 'Pending' || jobStatus === 'Processing'
+
+  const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) onUpload(lesson.lessonId, file)
+    e.target.value = ''
+  }
+
+  return (
+    <div className="border border-border rounded-xl p-4 bg-background/50 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">Video</span>
+        {jobStatus && VIDEO_JOB_CONFIG[jobStatus] ? (
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${VIDEO_JOB_CONFIG[jobStatus].color}`}>
+            {VIDEO_JOB_CONFIG[jobStatus].label}
+          </span>
+        ) : !jobStatus && hasVideo ? (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-success/15 text-success font-medium">Ready</span>
+        ) : null}
+      </div>
+
+      {/* Upload progress */}
+      {state?.uploading && (
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs text-subtle">
+            <span>Uploading…</span>
+            <span>{state.progress}%</span>
+          </div>
+          <div className="h-1.5 bg-border rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-150"
+              style={{ width: `${state.progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Processing indicator */}
+      {isActive && !state?.uploading && (
+        <div className="flex items-center gap-2 text-xs text-subtle">
+          <Spinner size="sm" />
+          <span>Processing video — this takes a few minutes.</span>
+        </div>
+      )}
+
+      {/* Failed state */}
+      {jobStatus === 'Dead' && (
+        <p className="text-xs text-danger">
+          Processing failed after 3 attempts. Upload a new file to retry.
+        </p>
+      )}
+
+      {/* Ready / no video */}
+      {!state?.uploading && !isActive && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-subtle hover:text-text hover:bg-surface-hover transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            {hasVideo ? 'Replace video' : 'Upload video'}
+          </button>
+          {hasVideo && !jobStatus && (
+            <span className="text-xs text-subtle">Video is ready for students.</span>
+          )}
+        </div>
+      )}
+
+      <input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={handleSelect} />
+    </div>
+  )
+}
+
+// ── LessonRow ──────────────────────────────────────────────────────────────────
+
+function LessonRow({
+  lesson,
+  moduleId,
+  courseId,
+  expanded,
+  videoState,
+  onToggle,
+  onSave,
+  onDelete,
+  onUpload,
+}: {
+  lesson: LessonDetail
+  moduleId: string
+  courseId: string
+  expanded: boolean
+  videoState: VideoUploadState | undefined
+  onToggle: () => void
+  onSave: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onDelete: (moduleId: string, lessonId: string) => void
+  onUpload: (lessonId: string, file: File) => void
+}) {
+  const [title, setTitle]           = useState(lesson.title)
+  const [type, setType]             = useState(lesson.type)
+  const [duration, setDuration]     = useState(String(lesson.durationSeconds))
+  const [freePreview, setFreePreview] = useState(lesson.isFreePreview)
+  const [dirty, setDirty]           = useState(false)
+
+  // Reset draft when lesson data changes from server (e.g. after save)
+  useEffect(() => {
+    if (!dirty) {
+      setTitle(lesson.title)
+      setType(lesson.type)
+      setDuration(String(lesson.durationSeconds))
+      setFreePreview(lesson.isFreePreview)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.lessonId])
+
+  const hasActiveJob =
+    videoState?.jobStatus === 'Pending' || videoState?.jobStatus === 'Processing'
+  const jobCfg = videoState?.jobStatus ? VIDEO_JOB_CONFIG[videoState.jobStatus] : null
+
+  return (
+    <div className="border-b border-border/50 last:border-b-0">
+      {/* Collapsed row */}
+      <div className="flex items-center justify-between px-5 py-2.5 hover:bg-surface-hover/20 transition-colors">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-subtle font-mono shrink-0">{lesson.order}.</span>
+          <span className="text-sm text-text truncate">{lesson.title}</span>
+          {lesson.isFreePreview && (
+            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">Free</span>
+          )}
+          {/* Video status chip in collapsed view */}
+          {videoState?.uploading ? (
+            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+              Uploading {videoState.progress}%
+            </span>
+          ) : hasActiveJob && jobCfg ? (
+            <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${jobCfg.color}`}>
+              {jobCfg.label}
+            </span>
+          ) : lesson.contentUrl ? (
+            <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">
+              Video
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-3 shrink-0 ml-3">
+          <button
+            onClick={onToggle}
+            className="text-xs text-subtle hover:text-text transition-colors"
+          >
+            {expanded ? 'Close' : 'Edit'}
+          </button>
+          <button
+            onClick={() => onDelete(moduleId, lesson.lessonId)}
+            className="text-xs text-danger hover:text-danger/70 transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded edit panel */}
+      {expanded && (
+        <div className="px-5 pb-4 pt-2 space-y-3 bg-background/30 border-t border-border/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-subtle mb-1">Title</label>
+              <input
+                suppressHydrationWarning
+                value={title}
+                onChange={(e) => { setTitle(e.target.value); setDirty(true) }}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-subtle mb-1">Type</label>
+              <select
+                value={type}
+                onChange={(e) => { setType(Number(e.target.value)); setDirty(true) }}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                {LESSON_TYPES.map((t, i) => <option key={t} value={i}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-subtle mb-1">Duration (seconds)</label>
+              <input
+                suppressHydrationWarning
+                type="number"
+                min="0"
+                value={duration}
+                onChange={(e) => { setDuration(e.target.value); setDirty(true) }}
+                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-5">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={freePreview}
+                  onChange={(e) => { setFreePreview(e.target.checked); setDirty(true) }}
+                />
+                <div className="w-9 h-5 bg-border peer-focus:ring-2 peer-focus:ring-primary/40 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                <span className="ml-2 text-sm text-text">Free preview</span>
+              </label>
+            </div>
+          </div>
+
+          <button
+            disabled={!dirty}
+            onClick={() => {
+              onSave(moduleId, lesson.lessonId, {
+                title,
+                type,
+                durationSeconds: parseInt(duration) || 0,
+                contentUrl: lesson.contentUrl,
+                isFreePreview: freePreview,
+              })
+              setDirty(false)
+            }}
+            className="px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
+          >
+            Save lesson
+          </button>
+
+          {type === 0 && (
+            <VideoUploadPanel
+              courseId={courseId}
+              lesson={lesson}
+              state={videoState}
+              onUpload={onUpload}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── NewCoursePage ──────────────────────────────────────────────────────────────
+
 export function NewCoursePage() {
   const router      = useRouter()
   const { user }    = useAuthStore()
   const queryClient = useQueryClient()
 
-  if (user?.role !== 'Instructor' && user?.role !== 'Admin') return null
+  const [title, setTitle]   = useState('')
+  const [desc, setDesc]     = useState('')
+  const [isFree, setIsFree] = useState(false)
+  const [level, setLevel]   = useState(0)
 
-  const [title, setTitle]       = useState('')
-  const [desc, setDesc]         = useState('')
-  const [price, setPrice]       = useState('0')
-  const [level, setLevel]       = useState(0)
+  if (user?.role !== 'Instructor' && user?.role !== 'Admin') return null
 
   const mutation = useMutation({
     mutationFn: () =>
-      createCourse({ title, description: desc, price: parseFloat(price) || 0, level }),
+      createCourseApi({ title, description: desc, isFree, level }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['instructor'] })
       router.push(`/instructor/courses/${data.courseId}`)
@@ -121,7 +410,8 @@ export function NewCoursePage() {
 
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">Description</label>
-            <textarea suppressHydrationWarning
+            <textarea
+              suppressHydrationWarning
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               rows={4}
@@ -132,18 +422,6 @@ export function NewCoursePage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-text mb-1.5">Price ($)</label>
-              <input
-                suppressHydrationWarning
-                type="number"
-                min="0"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-text mb-1.5">Level</label>
               <select
                 value={level}
@@ -152,6 +430,20 @@ export function NewCoursePage() {
               >
                 {LEVELS.map((l, i) => <option key={l} value={i}>{l}</option>)}
               </select>
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={isFree}
+                    onChange={(e) => setIsFree(e.target.checked)}
+                  />
+                  <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success peer-focus-visible:ring-2 peer-focus-visible:ring-success peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                </div>
+                <span className="text-sm text-text">Free course</span>
+              </label>
             </div>
           </div>
 
@@ -172,81 +464,110 @@ export function NewCoursePage() {
   )
 }
 
-// ── Course Management Page ────────────────────────────
+// ── InstructorCoursePage ───────────────────────────────────────────────────────
+
 export default function InstructorCoursePage() {
-  const params       = useParams()
-  const courseId     = (params?.id as string) ?? ''
-  const router       = useRouter()
-  const { user }     = useAuthStore()
-  const queryClient  = useQueryClient()
-  const [tab, setTab] = useState<'details' | 'modules'>('details')
+  const params      = useParams()
+  const courseId    = (params?.id as string) ?? ''
+  const router      = useRouter()
+  const { user }    = useAuthStore()
+  const queryClient = useQueryClient()
+
+  const [tab, setTab]             = useState<'details' | 'modules'>('details')
+  const [dirty, setDirty]         = useState(false)
+  const [title, setTitle]         = useState('')
+  const [desc, setDesc]           = useState('')
+  const [isFree, setIsFree]       = useState(false)
+  const [level, setLevel]         = useState(0)
+  const [newModuleTitle, setNewModuleTitle] = useState('')
+  const [newLessonTitle, setNewLessonTitle] = useState<Record<string, string>>({})
+  const [expandedLesson, setExpandedLesson] = useState<string | null>(null)
+  const [videoStates, setVideoStates] = useState<Record<string, VideoUploadState>>({})
 
   if (user?.role !== 'Instructor' && user?.role !== 'Admin') return null
 
-  // details edit state
-  const [title, setTitle]   = useState('')
-  const [desc, setDesc]     = useState('')
-  const [price, setPrice]   = useState('0')
-  const [level, setLevel]   = useState(0)
-  const [dirty, setDirty]   = useState(false)
-
-  // promotion state
-  const [promoPrice, setPromoPrice] = useState('')
-  const [promoExpiry, setPromoExpiry] = useState('')
-
-  // module add state
-  const [newModuleTitle, setNewModuleTitle] = useState('')
-  // lesson add state per module
-  const [newLessonTitle, setNewLessonTitle] = useState<Record<string, string>>({})
-
   const { data: course, isLoading } = useQuery({
     queryKey: ['course-detail', courseId],
-    queryFn: () => fetchCourse(courseId!),
+    queryFn: () => fetchCourse(courseId),
     enabled: !!courseId,
     staleTime: 0,
   })
 
-  // Populate form fields only on first load (when not dirty)
   useEffect(() => {
     if (course && !dirty) {
       setTitle(course.title)
       setDesc(course.description)
-      setPrice(String(course.price ?? 0))
+      setIsFree(course.isFree)
       setLevel(course.level)
     }
-  }, [course?.courseId]) // only run when courseId changes (first load)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course?.courseId])
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['course-detail', courseId] })
+  // Poll video jobs that are Pending or Processing
+  useEffect(() => {
+    const activeEntries = Object.entries(videoStates).filter(
+      ([, v]) => v.jobId && (v.jobStatus === 'Pending' || v.jobStatus === 'Processing'),
+    )
+    if (activeEntries.length === 0) return
+
+    const interval = setInterval(async () => {
+      for (const [lessonId, v] of activeEntries) {
+        if (!v.jobId) continue
+        try {
+          const status = await videoService.getJobStatus(v.jobId)
+          setVideoStates((prev) => ({
+            ...prev,
+            [lessonId]: { ...prev[lessonId], jobStatus: status.status },
+          }))
+          if (status.status === 'Completed') {
+            queryClient.invalidateQueries({ queryKey: ['course-detail', courseId] })
+            toast.success('Video processing complete.')
+          }
+          if (status.status === 'Dead') {
+            toast.error('Video processing failed.')
+          }
+        } catch {
+          // silent — will retry next interval
+        }
+      }
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [videoStates, courseId, queryClient])
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ['course-detail', courseId] })
 
   const updateMutation = useMutation({
-    mutationFn: () => updateCourse(courseId!, { title, description: desc, price: parseFloat(price) || 0, level }),
+    mutationFn: () =>
+      updateCourseApi(courseId, { title, description: desc, isFree, level }),
     onSuccess: () => { setDirty(false); invalidate(); toast.success('Course details saved.') },
   })
 
   const publishMutation = useMutation({
-    mutationFn: () => publishCourse(courseId!),
+    mutationFn: () => publishCourse(courseId),
     onSuccess: () => { invalidate(); toast.success('Course published.') },
   })
 
   const archiveMutation = useMutation({
-    mutationFn: () => archiveCourse(courseId!),
+    mutationFn: () => archiveCourse(courseId),
     onSuccess: () => { invalidate(); toast.success('Course archived.') },
   })
 
   const addModuleMutation = useMutation({
     mutationFn: (moduleTitle: string) =>
-      addModule(courseId!, moduleTitle, (course?.modules.length ?? 0) + 1),
+      addModuleApi(courseId, moduleTitle, (course?.modules.length ?? 0) + 1),
     onSuccess: () => { setNewModuleTitle(''); invalidate() },
   })
 
   const deleteModuleMutation = useMutation({
-    mutationFn: (moduleId: string) => deleteModule(courseId!, moduleId),
+    mutationFn: (moduleId: string) => deleteModuleApi(courseId, moduleId),
     onSuccess: invalidate,
   })
 
   const addLessonMutation = useMutation({
     mutationFn: ({ moduleId, lessonTitle, order }: { moduleId: string; lessonTitle: string; order: number }) =>
-      addLesson(courseId!, moduleId, { title: lessonTitle, type: 0, durationSeconds: 0, order }),
+      addLessonApi(courseId, moduleId, { title: lessonTitle, type: 0, durationSeconds: 0, order }),
     onSuccess: (_data, vars) => {
       setNewLessonTitle((prev) => ({ ...prev, [vars.moduleId]: '' }))
       invalidate()
@@ -255,24 +576,56 @@ export default function InstructorCoursePage() {
 
   const deleteLessonMutation = useMutation({
     mutationFn: ({ moduleId, lessonId }: { moduleId: string; lessonId: string }) =>
-      deleteLesson(courseId!, moduleId, lessonId),
-    onSuccess: invalidate,
+      deleteLessonApi(courseId, moduleId, lessonId),
+    onSuccess: () => { setExpandedLesson(null); invalidate() },
   })
 
-  const setPromotionMutation = useMutation({
-    mutationFn: () => setPromotion(
-      courseId!,
-      promoPrice ? parseFloat(promoPrice) : null,
-      promoExpiry ? new Date(promoExpiry).toISOString() : null
-    ),
-    onSuccess: () => { invalidate(); toast.success('Promotion updated.') },
+  const updateLessonMutation = useMutation({
+    mutationFn: ({
+      moduleId,
+      lessonId,
+      data,
+    }: {
+      moduleId: string
+      lessonId: string
+      data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }
+    }) => updateLessonApi(courseId, moduleId, lessonId, data),
+    onSuccess: () => { invalidate(); toast.success('Lesson saved.') },
   })
+
+  const handleVideoUpload = async (lessonId: string, file: File) => {
+    setVideoStates((prev) => ({
+      ...prev,
+      [lessonId]: { uploading: true, progress: 0, jobId: null, jobStatus: null },
+    }))
+    try {
+      const result = await videoService.uploadVideo(courseId, lessonId, file, (pct) => {
+        setVideoStates((prev) => ({
+          ...prev,
+          [lessonId]: { ...prev[lessonId], progress: pct },
+        }))
+      })
+      setVideoStates((prev) => ({
+        ...prev,
+        [lessonId]: { uploading: false, progress: 100, jobId: result.jobId, jobStatus: result.status },
+      }))
+      toast.success('Upload complete. Processing video…')
+    } catch {
+      setVideoStates((prev) => ({
+        ...prev,
+        [lessonId]: { uploading: false, progress: 0, jobId: null, jobStatus: null },
+      }))
+      toast.error('Upload failed. Please try again.')
+    }
+  }
 
   if (isLoading || !course) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex justify-center items-center h-96"><Spinner size="lg" /></div>
+        <div className="flex justify-center items-center h-96">
+          <Spinner size="lg" />
+        </div>
       </div>
     )
   }
@@ -285,10 +638,13 @@ export default function InstructorCoursePage() {
       <Header />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
 
-        {/* Breadcrumb + title */}
+        {/* Header row */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => router.push('/instructor')} className="text-subtle hover:text-text transition-colors shrink-0">
+            <button
+              onClick={() => router.push('/instructor')}
+              className="text-subtle hover:text-text transition-colors shrink-0"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -303,8 +659,6 @@ export default function InstructorCoursePage() {
               </div>
             </div>
           </div>
-
-          {/* Status actions */}
           <div className="flex gap-2 shrink-0">
             {course.status === 0 && (
               <button
@@ -345,103 +699,61 @@ export default function InstructorCoursePage() {
         {/* Details tab */}
         {tab === 'details' && (
           <div className="space-y-5">
-          <div className="bg-surface border border-border rounded-2xl p-6 space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-text mb-1.5">Title</label>
-              <input
-                suppressHydrationWarning
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); setDirty(true) }}
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text mb-1.5">Description</label>
-              <textarea suppressHydrationWarning
-                value={desc}
-                onChange={(e) => { setDesc(e.target.value); setDirty(true) }}
-                rows={4}
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="bg-surface border border-border rounded-2xl p-6 space-y-5">
               <div>
-                <label className="block text-sm font-medium text-text mb-1.5">Price ($)</label>
+                <label className="block text-sm font-medium text-text mb-1.5">Title</label>
                 <input
                   suppressHydrationWarning
-                  type="number" min="0" step="0.01"
-                  value={price}
-                  onChange={(e) => { setPrice(e.target.value); setDirty(true) }}
+                  value={title}
+                  onChange={(e) => { setTitle(e.target.value); setDirty(true) }}
                   className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text mb-1.5">Level</label>
-                <select
-                  value={level}
-                  onChange={(e) => { setLevel(Number(e.target.value)); setDirty(true) }}
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  {LEVELS.map((l, i) => <option key={l} value={i}>{l}</option>)}
-                </select>
+                <label className="block text-sm font-medium text-text mb-1.5">Description</label>
+                <textarea
+                  suppressHydrationWarning
+                  value={desc}
+                  onChange={(e) => { setDesc(e.target.value); setDirty(true) }}
+                  rows={4}
+                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text mb-1.5">Level</label>
+                  <select
+                    value={level}
+                    onChange={(e) => { setLevel(Number(e.target.value)); setDirty(true) }}
+                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    {LEVELS.map((l, i) => <option key={l} value={i}>{l}</option>)}
+                  </select>
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={isFree}
+                        onChange={(e) => { setIsFree(e.target.checked); setDirty(true) }}
+                      />
+                      <div className="w-9 h-5 bg-border rounded-full transition-all peer-checked:bg-success peer-focus-visible:ring-2 peer-focus-visible:ring-success peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                    </div>
+                    <span className="text-sm text-text">Free course</span>
+                  </label>
+                </div>
+              </div>
+              <button
+                onClick={() => updateMutation.mutate()}
+                disabled={updateMutation.isPending || !dirty}
+                className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+              >
+                {updateMutation.isPending ? 'Saving…' : 'Save changes'}
+              </button>
             </div>
-            <button
-              onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending || !dirty}
-              className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
-            >
-              {updateMutation.isPending ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
 
-          {/* Promotion section */}
-          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-text mb-1">Promotional Price</h3>
-              <p className="text-xs text-subtle">Set a limited-time discount for this course.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-text mb-1.5">Promo price ($)</label>
-                <input
-                  suppressHydrationWarning
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={promoPrice}
-                  onChange={(e) => setPromoPrice(e.target.value)}
-                  placeholder="e.g. 9.99"
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text mb-1.5">Expires at</label>
-                <input
-                  suppressHydrationWarning
-                  type="date"
-                  value={promoExpiry}
-                  onChange={(e) => setPromoExpiry(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPromotionMutation.mutate()}
-                disabled={setPromotionMutation.isPending}
-                className="px-5 py-2 rounded-xl bg-warning/20 text-warning text-sm font-medium hover:bg-warning/30 disabled:opacity-50 transition-colors"
-              >
-                {setPromotionMutation.isPending ? 'Saving…' : 'Set promotion'}
-              </button>
-              <button
-                onClick={() => { setPromoPrice(''); setPromoExpiry(''); setPromotion(courseId!, null, null) }}
-                className="px-5 py-2 rounded-xl bg-surface text-subtle text-sm font-medium hover:text-text hover:bg-surface-hover/50 transition-colors border border-border"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
           </div>
         )}
 
@@ -473,32 +785,39 @@ export default function InstructorCoursePage() {
                 </div>
 
                 {/* Lessons */}
-                <div className="divide-y divide-border/50">
+                <div>
                   {mod.lessons.map((lesson) => (
-                    <div key={lesson.lessonId} className="flex items-center justify-between px-5 py-2.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs text-subtle">{lesson.order}.</span>
-                        <span className="text-sm text-text truncate">{lesson.title}</span>
-                        {lesson.isFreePreview && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">Free</span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteLessonMutation.mutate({ moduleId: mod.moduleId, lessonId: lesson.lessonId })}
-                        className="text-xs text-danger hover:text-danger/70 transition-colors shrink-0 ml-3"
-                      >
-                        Remove
-                      </button>
-                    </div>
+                    <LessonRow
+                      key={lesson.lessonId}
+                      lesson={lesson}
+                      moduleId={mod.moduleId}
+                      courseId={courseId}
+                      expanded={expandedLesson === lesson.lessonId}
+                      videoState={videoStates[lesson.lessonId]}
+                      onToggle={() =>
+                        setExpandedLesson((prev) =>
+                          prev === lesson.lessonId ? null : lesson.lessonId,
+                        )
+                      }
+                      onSave={(moduleId, lessonId, data) =>
+                        updateLessonMutation.mutate({ moduleId, lessonId, data })
+                      }
+                      onDelete={(moduleId, lessonId) =>
+                        deleteLessonMutation.mutate({ moduleId, lessonId })
+                      }
+                      onUpload={handleVideoUpload}
+                    />
                   ))}
                 </div>
 
-                {/* Add lesson row */}
+                {/* Add lesson */}
                 <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background/40">
                   <input
                     suppressHydrationWarning
                     value={newLessonTitle[mod.moduleId] ?? ''}
-                    onChange={(e) => setNewLessonTitle((prev) => ({ ...prev, [mod.moduleId]: e.target.value }))}
+                    onChange={(e) =>
+                      setNewLessonTitle((prev) => ({ ...prev, [mod.moduleId]: e.target.value }))
+                    }
                     placeholder="New lesson title…"
                     className="flex-1 px-3 py-1.5 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                     onKeyDown={(e) => {
@@ -519,7 +838,7 @@ export default function InstructorCoursePage() {
                         order: mod.lessons.length + 1,
                       })
                     }
-                    disabled={!( newLessonTitle[mod.moduleId] ?? '').trim() || addLessonMutation.isPending}
+                    disabled={!(newLessonTitle[mod.moduleId] ?? '').trim() || addLessonMutation.isPending}
                     className="px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
                   >
                     + Lesson

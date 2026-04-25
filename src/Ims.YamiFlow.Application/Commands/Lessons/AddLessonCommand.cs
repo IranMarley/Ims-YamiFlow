@@ -47,12 +47,10 @@ public class AddLessonHandler(ICourseRepository courses, IUnitOfWork uow)
         if (module is null)
             return Result.Failure<AddLessonResponse>("Module not found.");
 
-        module.AddLesson(cmd.Title, cmd.Type, cmd.DurationSeconds, cmd.Order, cmd.ContentUrl);
-
-        var lesson = module.Lessons.Last();
+        var lesson = module.AddLesson(cmd.Title, cmd.Type, cmd.DurationSeconds, cmd.Order, cmd.ContentUrl);
         if (cmd.IsFreePreview) lesson.MakeFreePreview();
 
-        courses.Update(course);
+        courses.AddLesson(lesson);
         await uow.CommitAsync(ct);
 
         return Result.Success(new AddLessonResponse(lesson.Id, lesson.Title, lesson.Order));

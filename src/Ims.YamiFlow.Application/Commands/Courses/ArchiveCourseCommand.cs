@@ -18,7 +18,6 @@ public class ArchiveCourseHandler(ICourseRepository courses, IUnitOfWork uow)
             return Result.Failure("Access denied.");
 
         course.Archive();
-        courses.Update(course);
         await uow.CommitAsync(ct);
 
         return Result.Success();

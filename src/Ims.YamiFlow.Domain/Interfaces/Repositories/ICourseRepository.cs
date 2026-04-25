@@ -8,6 +8,8 @@ public interface ICourseRepository
     Task<Course?> GetByIdWithModulesAsync(Guid id, CancellationToken ct = default);
     Task AddAsync(Course course, CancellationToken ct = default);
     void Update(Course course);
+    void AddModule(Module module);
+    void AddLesson(Lesson lesson);
     void RemoveModule(Module module);
     void RemoveLesson(Lesson lesson);
 }

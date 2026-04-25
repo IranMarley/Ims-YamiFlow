@@ -26,7 +26,7 @@ public static class CourseEndpoints
         .WithName("CreateCourse");
 
         group.MapGet("/", async ([AsParameters] ListCoursesParams p, ListCoursesHandler handler, CancellationToken ct) =>
-            Results.Ok(await handler.Handle(new ListCoursesQuery(p.Search, p.Level, p.Page, p.PageSize), ct)))
+            Results.Ok(await handler.Handle(new ListCoursesQuery(p.Search, p.Level, p.IsFree, p.Page, p.PageSize), ct)))
         .AllowAnonymous()
         .WithName("ListCourses");
 
@@ -75,4 +75,4 @@ public static class CourseEndpoints
 // ── Request / param records ───────────────────────────
 public record CreateCourseRequest(string Title, string Description, CourseLevel Level, bool IsFree = false);
 public record UpdateCourseRequest(string Title, string Description, CourseLevel Level, bool IsFree = false);
-public record ListCoursesParams(string? Search, CourseLevel? Level, int Page = 1, int PageSize = 12);
+public record ListCoursesParams(string? Search, CourseLevel? Level, bool? IsFree, int Page = 1, int PageSize = 12);

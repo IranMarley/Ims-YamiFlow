@@ -25,7 +25,7 @@ public static class LoggingExtensions
             {
                 loggerConfiguration.WriteTo.GrafanaLoki(lokiUrl, new[] 
                 {
-                    new LokiLabel { Key = "app", Value = appLabel } 
+                    new LokiLabel { Key = "app", Value = appLabel! } 
                 }, new[]
                 {
                     "trace_id", "span_id", "level", "exception_type"

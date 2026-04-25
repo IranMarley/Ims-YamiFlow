@@ -18,7 +18,6 @@ public class PublishCourseHandler(ICourseRepository courses, IUnitOfWork uow)
             return Result.Failure("Access denied.");
 
         course.Publish();
-        courses.Update(course);
         await uow.CommitAsync(ct);
 
         return Result.Success();

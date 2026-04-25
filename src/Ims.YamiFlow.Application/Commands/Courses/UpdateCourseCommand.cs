@@ -38,7 +38,6 @@ public class UpdateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
             return Result.Failure("Access denied.");
 
         course.Update(cmd.Title, cmd.Description, cmd.Level, cmd.IsFree);
-        courses.Update(course);
         await uow.CommitAsync(ct);
 
         return Result.Success();

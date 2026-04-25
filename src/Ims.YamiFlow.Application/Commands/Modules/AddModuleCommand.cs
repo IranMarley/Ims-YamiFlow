@@ -38,11 +38,10 @@ public class AddModuleHandler(ICourseRepository courses, IUnitOfWork uow)
         if (course.InstructorId != cmd.InstructorId)
             return Result.Failure<AddModuleResponse>("Access denied.");
 
-        course.AddModule(cmd.Title, cmd.Order);
-        courses.Update(course);
+        var module = course.AddModule(cmd.Title, cmd.Order);
+        courses.AddModule(module);
         await uow.CommitAsync(ct);
 
-        var module = course.Modules.Last();
         return Result.Success(new AddModuleResponse(module.Id, module.Title, module.Order));
     }
 }

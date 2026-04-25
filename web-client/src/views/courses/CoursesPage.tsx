@@ -47,6 +47,7 @@ export default function CoursesPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [level, setLevel] = useState<CourseLevel | 'All'>('All')
+  const [onlyFree, setOnlyFree] = useState(false)
   const [page, setPage] = useState(1)
   const [enrollingId, setEnrollingId] = useState<string | null>(null)
 
@@ -62,6 +63,7 @@ export default function CoursesPage() {
   const { data, isLoading, isFetching } = useCourses({
     search: debouncedSearch || undefined,
     level: level === 'All' ? undefined : level,
+    isFree: onlyFree || undefined,
     page,
     pageSize: PAGE_SIZE,
   })
@@ -99,36 +101,61 @@ export default function CoursesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex-1">
-            <Input
-              placeholder="Search courses..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              leftIcon={
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              }
-            />
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <Input
+                placeholder="Search courses..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                leftIcon={
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                }
+              />
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              {LEVELS.map((l) => (
+                <button
+                  key={l}
+                  onClick={() => { setLevel(l); setPage(1) }}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 border cursor-pointer ${
+                    level === l
+                      ? 'bg-primary/15 text-primary border-primary/30'
+                      : 'bg-surface text-subtle border-border hover:text-text hover:border-subtle'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {LEVELS.map((l) => (
-              <button
-                key={l}
-                onClick={() => { setLevel(l); setPage(1) }}
-                className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 border ${
-                  level === l
-                    ? 'bg-primary/15 text-primary border-primary/30'
-                    : 'bg-surface text-subtle border-border hover:text-text hover:border-subtle'
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+          <label className="flex items-center gap-2.5 cursor-pointer w-fit">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={onlyFree}
+                onChange={(e) => { setOnlyFree(e.target.checked); setPage(1) }}
+                className="sr-only peer"
+              />
+              <div className={`w-4 h-4 rounded border transition-all ${
+                onlyFree
+                  ? 'bg-success border-success'
+                  : 'bg-surface border-border'
+              } peer-focus-visible:ring-2 peer-focus-visible:ring-success peer-focus-visible:ring-offset-1 peer-focus-visible:ring-offset-background`}>
+                {onlyFree && (
+                  <svg className="w-3 h-3 text-white absolute top-0.5 left-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+            <span className="text-sm text-subtle select-none">Free courses only</span>
+          </label>
         </div>
 
         {/* Course grid */}

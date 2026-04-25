@@ -33,6 +33,7 @@ public record CourseDetailResponse(
     int Level,
     int Status,
     string InstructorId,
+    string? InstructorName,
     DateTime? PublishedAt,
     int EnrollmentCount,
     IReadOnlyList<ModuleDetail> Modules
@@ -50,6 +51,7 @@ file sealed class CourseRow
     public int Level { get; init; }
     public int Status { get; init; }
     public string InstructorId { get; init; } = string.Empty;
+    public string? InstructorName { get; init; }
     public DateTime? PublishedAt { get; init; }
     public int EnrollmentCount { get; init; }
 }
@@ -91,12 +93,14 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
                    c."Level"               AS Level,
                    c."Status"              AS Status,
                    c."InstructorId"        AS InstructorId,
+                   u."FullName"            AS InstructorName,
                    c."PublishedAt"         AS PublishedAt,
                    COUNT(e."Id")::int      AS EnrollmentCount
             FROM "Courses" c
+            LEFT JOIN "AspNetUsers"  u ON u."Id" = c."InstructorId"
             LEFT JOIN "Enrollments" e ON e."CourseId" = c."Id"
             WHERE c."Id" = @CourseId
-            GROUP BY c."Id"
+            GROUP BY c."Id", u."FullName"
             """;
 
         var moduleSql = """
@@ -161,6 +165,7 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
             course.Level,
             course.Status,
             course.InstructorId,
+            course.InstructorName,
             course.PublishedAt,
             course.EnrollmentCount,
             moduleDetails);

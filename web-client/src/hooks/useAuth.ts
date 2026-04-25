@@ -29,7 +29,12 @@ export function useLogin() {
       )
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['admin'] })
-      router.push('/dashboard')
+      const role = response.role
+      if (role === 'Instructor') {
+        router.push('/instructor')
+      } else {
+        router.push('/dashboard')
+      }
     },
   })
 }

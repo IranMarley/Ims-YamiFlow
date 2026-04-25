@@ -6,6 +6,7 @@ namespace Ims.YamiFlow.Application.Queries.Courses;
 public record ListCoursesQuery(
     string? Search,
     CourseLevel? Level,
+    bool? IsFree,
     int Page = 1,
     int PageSize = 12
 ) : IPaginatedQuery;
@@ -38,6 +39,8 @@ public class ListCoursesHandler(IDbConnectionFactory db)
             where += """ AND c."Title" ILIKE @Search""";
         if (q.Level.HasValue)
             where += """ AND c."Level" = @Level""";
+        if (q.IsFree.HasValue)
+            where += """ AND c."IsFree" = @IsFree""";
 
         var sql = $"""
             SELECT c."Id"                  AS CourseId,
@@ -66,6 +69,7 @@ public class ListCoursesHandler(IDbConnectionFactory db)
         {
             Search = $"%{q.Search}%",
             Level = (int?)q.Level,
+            IsFree = q.IsFree,
             PageSize = q.PageSize,
             Offset = (q.Page - 1) * q.PageSize
         };

@@ -3,14 +3,19 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '../store/authStore'
 
-// Hook: redirect to /dashboard if the user is authenticated
-export function useRedirectIfAuthenticated(redirectTo: string = '/dashboard') {
+export function useRedirectIfAuthenticated(redirectTo?: string) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const user = useAuthStore((s) => s.user)
   const router = useRouter()
 
   useEffect(() => {
-    if (isAuthenticated) router.push(redirectTo)
-  }, [isAuthenticated, redirectTo, router])
+    if (!isAuthenticated) return
+    if (redirectTo) {
+      router.push(redirectTo)
+    } else {
+      router.push(user?.role === 'Instructor' ? '/instructor' : '/dashboard')
+    }
+  }, [isAuthenticated, redirectTo, router, user?.role])
 }
 
 export default useRedirectIfAuthenticated

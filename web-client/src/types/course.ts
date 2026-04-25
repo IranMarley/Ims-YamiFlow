@@ -23,22 +23,15 @@ export interface Course {
   title: string
   slug: string
   description: string
-  price?: number
-  promotionalPrice?: number | null
-  promotionExpiresAt?: string | null
+  thumbnail?: string | null
+  isFree: boolean
   level: CourseLevel
-  status: CourseStatus
+  status?: CourseStatus
   instructorId: string
   instructorName?: string | null
-  thumbnailUrl?: string
-  thumbnail?: string | null
-  totalModules?: number
-  totalLessons?: number
   enrollmentCount?: number
-  createdAt?: string
   publishedAt?: string | null
   modules?: ModuleDetail[]
-  isFree?: boolean
 }
 
 export interface PagedResult<T> {
@@ -54,4 +47,5 @@ export interface CourseListParams {
   page?: number
   pageSize?: number
   level?: CourseLevel
+  isFree?: boolean
 }

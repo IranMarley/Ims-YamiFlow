@@ -1,6 +1,3 @@
-using Ims.YamiFlow.Application.Common;
-using Ims.YamiFlow.Domain.Entities;
-
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 
 namespace Ims.YamiFlow.Application.Commands.Certificates;
@@ -22,10 +19,10 @@ public class IssueCertificateHandler(
     {
         var enrollment = await enrollmentRepository.GetByIdAsync(cmd.EnrollmentId, ct);
         if (enrollment is null)
-            return Result.Failure<CertificateResponse>("Matrícula não encontrada.");
+            return Result.Failure<CertificateResponse>("Enrollment not found.");
 
         if (enrollment.StudentId != cmd.StudentId)
-            return Result.Failure<CertificateResponse>("Acesso negado.");
+            return Result.Failure<CertificateResponse>("Access denied.");
 
         // return existing certificate if already issued
         var existing = await certificateRepository.GetByEnrollmentIdAsync(cmd.EnrollmentId, ct);
@@ -35,13 +32,13 @@ public class IssueCertificateHandler(
         // fetch total lessons for eligibility check
         var course = await courseRepository.GetByIdWithModulesAsync(enrollment.CourseId, ct);
         if (course is null)
-            return Result.Failure<CertificateResponse>("Curso não encontrado.");
+            return Result.Failure<CertificateResponse>("Course not found.");
 
         var totalLessons = course.Modules.SelectMany(m => m.Lessons).Count();
 
         if (!enrollment.IsEligibleForCertificate(totalLessons))
             return Result.Failure<CertificateResponse>(
-                "Aluno ainda não concluiu todas as aulas do curso.");
+                "Student has not completed all course lessons yet.");
 
         var certificate = Certificate.Create(cmd.EnrollmentId, cmd.StudentId, enrollment.CourseId);
         await certificateRepository.AddAsync(certificate, ct);

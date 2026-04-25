@@ -22,6 +22,12 @@ public class CourseRepository(AppDbContext db) : ICourseRepository
     public void Update(Course course)
         => db.Courses.Update(course);
 
+    public void AddModule(Module module)
+        => db.Modules.Add(module);
+
+    public void AddLesson(Lesson lesson)
+        => db.Lessons.Add(lesson);
+
     public void RemoveModule(Module module)
         => db.Modules.Remove(module);
 

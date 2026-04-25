@@ -39,10 +39,11 @@ public class Course
         };
     }
 
-    public void AddModule(string title, int order)
+    public Module AddModule(string title, int order)
     {
         var module = Module.Create(Id, title, order);
         _modules.Add(module);
+        return module;
     }
 
     public void Publish()
