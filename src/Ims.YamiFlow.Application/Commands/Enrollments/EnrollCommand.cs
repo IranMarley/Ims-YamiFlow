@@ -2,6 +2,7 @@ using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
+using Ims.YamiFlow.Domain.Interfaces.Services;
 
 namespace Ims.YamiFlow.Application.Commands.Enrollments;
 
@@ -44,11 +45,16 @@ public class EnrollHandler(
     ICourseRepository courseRepository,
     IEnrollmentRepository enrollmentRepository,
     ISubscriptionRepository subscriptionRepository,
+    IAuthUserService userService,
     IUnitOfWork uow)
     : IHandler<EnrollCommand, Result<EnrollResponse>>
 {
     public async Task<Result<EnrollResponse>> Handle(EnrollCommand cmd, CancellationToken ct)
     {
+        var roles = await userService.GetRolesAsync(cmd.StudentId, ct);
+        if (roles.Contains("Instructor") || roles.Contains("Admin"))
+            return Result.Failure<EnrollResponse>("Only students can enroll in courses.");
+
         var course = await courseRepository.GetByIdAsync(cmd.CourseId, ct);
         if (course is null)
             return Result.Failure<EnrollResponse>("Course not found.");

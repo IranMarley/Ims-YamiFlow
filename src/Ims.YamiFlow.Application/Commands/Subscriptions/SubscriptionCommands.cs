@@ -38,6 +38,10 @@ public class SubscribeHandler(
 {
     public async Task<Result<SubscribeResponse>> Handle(SubscribeCommand cmd, CancellationToken ct)
     {
+        var roles = await users.GetRolesAsync(cmd.UserId, ct);
+        if (roles.Contains("Instructor"))
+            return Result.Failure<SubscribeResponse>("Instructors cannot subscribe to plans.");
+
         var plan = await plans.GetByIdAsync(cmd.PlanId, ct);
         if (plan is null || !plan.IsActive)
             return Result.Failure<SubscribeResponse>("Plan not found or inactive.");

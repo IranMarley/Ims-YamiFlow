@@ -22,19 +22,20 @@ export function useLogin(redirectTo?: string) {
     mutationFn: (data: LoginRequest) => authService.login(data),
     onError: (err) => toast.error(extractErrorMessage(err, 'Login failed')),
     onSuccess: (response) => {
+      queryClient.clear()
       setAuth(
         { userId: response.userId, email: response.email, fullName: response.fullName, role: response.role },
         response.accessToken,
         response.refreshToken,
       )
-      queryClient.invalidateQueries({ queryKey: ['profile'] })
-      queryClient.invalidateQueries({ queryKey: ['admin'] })
       if (redirectTo) {
         router.push(redirectTo)
         return
       }
       const role = response.role
-      if (role === 'Instructor') {
+      if (role === 'Admin') {
+        router.push('/admin')
+      } else if (role === 'Instructor') {
         router.push('/instructor')
       } else {
         router.push('/dashboard')
@@ -117,8 +118,7 @@ export function useLogout() {
     onError: (err) => toast.error((err as Error)?.message || 'Logout failed'),
     onSettled: () => {
       logout()
-      queryClient.invalidateQueries({ queryKey: ['profile'] })
-      queryClient.invalidateQueries({ queryKey: ['admin'] })
+      queryClient.clear()
       router.push('/login')
     },
   })
