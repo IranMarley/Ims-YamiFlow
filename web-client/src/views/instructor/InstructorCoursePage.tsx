@@ -36,8 +36,11 @@ interface LessonDetail {
   lessonId: string
   title: string
   order: number
+  type: number
+  durationSeconds: number
   contentUrl: string | null
   isFreePreview: boolean
+  hasVideo: boolean
 }
 
 interface ModuleDetail {
