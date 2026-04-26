@@ -42,14 +42,17 @@ public static class VideoEndpoints
         // ── Stream manifest ────────────────────────────────────────────────────
         // AllowAnonymous: free-preview lessons are accessible without login.
         // Manual access check runs inside the handler.
+        // DisableRateLimiting: HLS players generate many rapid requests; access is enforced in the handler.
         app.MapGet("/api/lessons/{lessonId:guid}/video/manifest", GetManifest)
             .AllowAnonymous()
+            .DisableRateLimiting()
             .WithTags(Resources.Lesson)
             .WithName("GetVideoManifest");
 
         // ── HLS segments / sub-playlists ───────────────────────────────────────
         app.MapGet("/api/lessons/{lessonId:guid}/video/hls/{**filePath}", GetHlsFile)
             .AllowAnonymous()
+            .DisableRateLimiting()
             .WithTags(Resources.Lesson)
             .WithName("GetHlsFile");
     }

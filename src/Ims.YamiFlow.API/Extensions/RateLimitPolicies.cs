@@ -3,7 +3,6 @@ namespace Ims.YamiFlow.API.Extensions;
 public static class RateLimitPolicies
 {
     // Named limiters
-    public const string Default = "default";
     public const string Auth = "auth";
 
     // Partition prefixes used by the global partitioned limiter

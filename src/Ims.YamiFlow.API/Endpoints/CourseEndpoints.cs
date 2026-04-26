@@ -6,7 +6,6 @@ using Ims.YamiFlow.Domain.Enums;
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Infrastructure.Services.Media;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
@@ -18,7 +17,7 @@ public static class CourseEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/courses").WithTags(Resources.Course).RequireRateLimiting("default");
+        var group = app.MapGroup("/api/courses").WithTags(Resources.Course);
 
         group.MapPost("/", async (CreateCourseRequest req, CreateCourseHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
         {

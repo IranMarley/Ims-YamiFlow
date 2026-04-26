@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Modules;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 namespace Ims.YamiFlow.API.Endpoints;
 
@@ -10,7 +9,7 @@ public static class ModuleEndpoints
 {
     public static void Map(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/courses/{courseId:guid}/modules").WithTags(Resources.Module).RequireRateLimiting("default");
+        var group = app.MapGroup("/api/courses/{courseId:guid}/modules").WithTags(Resources.Module);
 
         group.MapPost("/", async (
             Guid courseId, [FromBody] AddModuleRequest req,

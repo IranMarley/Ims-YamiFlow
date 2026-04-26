@@ -251,8 +251,8 @@ public static class ServiceExtensions
                     // Authenticated users get a larger bucket
                     return new TokenBucketRateLimiterOptions
                     {
-                        TokenLimit = 100,
-                        TokensPerPeriod = 50,
+                        TokenLimit = 300,
+                        TokensPerPeriod = 100,
                         ReplenishmentPeriod = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
@@ -261,18 +261,17 @@ public static class ServiceExtensions
                 });
              });
 
-            // Keep existing named policies for more specific endpoints
-            options.AddFixedWindowLimiter(RateLimitPolicies.Default, cfg =>
+            // Auth endpoints: strict per-IP fixed-window to prevent brute-force.
+            // Partitioned so one IP's failures don't block others.
+            options.AddPolicy(RateLimitPolicies.Auth, httpContext =>
             {
-                cfg.PermitLimit = 100;
-                cfg.Window = TimeSpan.FromMinutes(1);
-                cfg.QueueLimit = 10;
-            });
-
-            options.AddFixedWindowLimiter(RateLimitPolicies.Auth, cfg =>
-            {
-                cfg.PermitLimit = 10;
-                cfg.Window = TimeSpan.FromMinutes(1);
+                var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                });
             });
 
             // Set a global rejection status code
