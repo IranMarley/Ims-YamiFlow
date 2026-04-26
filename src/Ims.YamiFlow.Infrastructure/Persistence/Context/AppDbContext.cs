@@ -73,6 +73,7 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, string>, IAuditD
         var userName = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
 
+        ExtraFields["Source"] = "API";
         if (userId is not null) ExtraFields["UserId"] = userId;
         if (userName is not null) ExtraFields["UserName"] = userName;
         if (ipAddress is not null) ExtraFields["IpAddress"] = ipAddress;

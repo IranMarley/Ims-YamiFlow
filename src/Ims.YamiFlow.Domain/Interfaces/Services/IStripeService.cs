@@ -33,5 +33,10 @@ public interface IStripeService
         string subscriptionId,
         CancellationToken ct = default);
 
+    Task<StripeSubscriptionResult> SwitchPlanAsync(
+        string subscriptionId,
+        string newPriceId,
+        CancellationToken ct = default);
+
     string PublishableKey { get; }
 }

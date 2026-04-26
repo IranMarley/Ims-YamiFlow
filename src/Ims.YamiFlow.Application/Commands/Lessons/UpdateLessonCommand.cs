@@ -9,8 +9,6 @@ public record UpdateLessonCommand(
     Guid LessonId,
     string InstructorId,
     string Title,
-    LessonType Type,
-    int DurationSeconds,
     string? ContentUrl,
     bool IsFreePreview
 );
@@ -20,7 +18,6 @@ public class UpdateLessonValidator : AbstractValidator<UpdateLessonCommand>
     public UpdateLessonValidator()
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.DurationSeconds).GreaterThanOrEqualTo(0);
     }
 }
 
@@ -39,7 +36,7 @@ public class UpdateLessonHandler(ICourseRepository courses, IUnitOfWork uow)
         var lesson = module.FindLesson(cmd.LessonId);
         if (lesson is null) return Result.Failure("Lesson not found.");
 
-        lesson.Update(cmd.Title, cmd.Type, cmd.DurationSeconds, cmd.ContentUrl, cmd.IsFreePreview);
+        lesson.Update(cmd.Title, cmd.ContentUrl, cmd.IsFreePreview);
         await uow.CommitAsync(ct);
 
         return Result.Success();

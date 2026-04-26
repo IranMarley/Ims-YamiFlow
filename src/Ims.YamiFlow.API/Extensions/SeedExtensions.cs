@@ -4,6 +4,7 @@ using Ims.YamiFlow.Infrastructure.IAM;
 using Ims.YamiFlow.Infrastructure.Persistence.Context;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Ims.YamiFlow.API.Extensions;
 
@@ -12,9 +13,10 @@ public static class SeedExtensions
     public static async Task MigrateAndSeedAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<WebApplication>>();
 
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        await MigrateWithRetryAsync(db, logger);
 
         var seeder = scope.ServiceProvider.GetRequiredService<IamSeed>();
         await seeder.RunAsync();
@@ -25,6 +27,31 @@ public static class SeedExtensions
         await SeedSubscriptionPlansAsync(db);
     }
     
+    private static async Task MigrateWithRetryAsync(AppDbContext db, ILogger logger,
+        int maxAttempts = 10, int delaySeconds = 3)
+    {
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                logger.LogInformation("Applying EF Core migrations (attempt {Attempt}/{Max})…", attempt, maxAttempts);
+                await db.Database.MigrateAsync();
+                logger.LogInformation("Migrations applied successfully.");
+                return;
+            }
+            catch (Exception ex) when (attempt < maxAttempts)
+            {
+                logger.LogWarning(ex,
+                    "Migration attempt {Attempt} failed. Retrying in {Delay}s…", attempt, delaySeconds);
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                delaySeconds = Math.Min(delaySeconds * 2, 30); // exponential backoff, cap at 30s
+            }
+        }
+
+        // Last attempt — let it throw
+        await db.Database.MigrateAsync();
+    }
+
     private static async Task SeedUsersAsync(UserManager<AppUser> userManager)
     {
         var defaultUsers = new[]
@@ -176,12 +203,12 @@ public static class SeedExtensions
             var course = Course.Create(title, desc, level, instructor.Id, isFree);
             course.AddModule("Introduction", 1);
             var introModule = course.Modules.First();
-            introModule.AddLesson("Getting Started", LessonType.Video, 600, 1);
+            introModule.AddLesson("Getting Started", 1);
 
             course.AddModule("Core Concepts", 2);
             var coreModule = course.Modules.Skip(1).First();
-            coreModule.AddLesson("Fundamentals Overview", LessonType.Video, 1800, 1);
-            coreModule.AddLesson("Hands-on Practice", LessonType.Video, 2400, 2);
+            coreModule.AddLesson("Fundamentals Overview", 1);
+            coreModule.AddLesson("Hands-on Practice", 2);
 
             // Publish so courses appear in listings
             course.Publish();

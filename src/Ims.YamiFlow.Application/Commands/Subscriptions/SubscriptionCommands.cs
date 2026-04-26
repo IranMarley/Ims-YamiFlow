@@ -15,7 +15,7 @@ public record SubscribeResponse(
     string? PublishableKey);
 
 // ── Subscribe ─────────────────────────────────────────
-public record SubscribeCommand(string UserId, Guid PlanId);
+public record SubscribeCommand(string UserId, Guid PlanId, bool Simulate = false);
 
 public class SubscribeValidator : AbstractValidator<SubscribeCommand>
 {
@@ -38,17 +38,75 @@ public class SubscribeHandler(
 {
     public async Task<Result<SubscribeResponse>> Handle(SubscribeCommand cmd, CancellationToken ct)
     {
-        // Reject if user already has an access-granting subscription
-        var existing = await subscriptions.GetActiveByUserAsync(cmd.UserId, ct);
-        if (existing is not null && existing.GrantsAccess())
-            return Result.Failure<SubscribeResponse>("You already have an active subscription.");
-
         var plan = await plans.GetByIdAsync(cmd.PlanId, ct);
         if (plan is null || !plan.IsActive)
             return Result.Failure<SubscribeResponse>("Plan not found or inactive.");
 
+        var existing = await subscriptions.GetActiveByUserAsync(cmd.UserId, ct);
+        if (existing is not null && existing.GrantsAccess())
+        {
+            if (existing.PlanId == cmd.PlanId)
+                return Result.Failure<SubscribeResponse>("You are already on this plan.");
+
+            // Switch plan
+            if (cmd.Simulate || existing.StripeSubscriptionId.StartsWith("sim_"))
+            {
+                existing.MarkCanceled();
+                subscriptions.Update(existing);
+
+                var switchSimSubId = $"sim_sub_{Guid.NewGuid():N}";
+                var switchSimSub = Subscription.Create(
+                    cmd.UserId, plan.Id, existing.StripeCustomerId, switchSimSubId, SubscriptionStatus.Active);
+                switchSimSub.SyncFromStripe(
+                    SubscriptionStatus.Active,
+                    DateTime.UtcNow,
+                    DateTime.UtcNow.AddMonths(plan.Interval == Domain.Enums.BillingInterval.Year ? 12 : 1),
+                    cancelAtPeriodEnd: false,
+                    canceledAt: null,
+                    trialEnd: null);
+                await subscriptions.AddAsync(switchSimSub, ct);
+                await uow.CommitAsync(ct);
+                logger.LogInformation("Simulated plan switch to {PlanId} for user {UserId}", plan.Id, cmd.UserId);
+                return Result.Success(new SubscribeResponse(switchSimSub.Id, switchSimSubId, "active", null, null));
+            }
+            else
+            {
+                var switchResult = await stripe.SwitchPlanAsync(existing.StripeSubscriptionId, plan.StripePriceId, ct);
+                existing.SyncFromStripe(
+                    MapStatus(switchResult.Status),
+                    switchResult.CurrentPeriodStart,
+                    switchResult.CurrentPeriodEnd,
+                    switchResult.CancelAtPeriodEnd,
+                    switchResult.CanceledAt,
+                    switchResult.TrialEnd,
+                    planId: plan.Id);
+                subscriptions.Update(existing);
+                await uow.CommitAsync(ct);
+                logger.LogInformation("Switched plan to {PlanId} for user {UserId}", plan.Id, cmd.UserId);
+                return Result.Success(new SubscribeResponse(existing.Id, existing.StripeSubscriptionId, switchResult.Status, switchResult.ClientSecret, null));
+            }
+        }
+
         var user = await users.FindByIdAsync(cmd.UserId, ct);
         if (user is null) return Result.Failure<SubscribeResponse>("User not found.");
+
+        if (cmd.Simulate)
+        {
+            var simSubId = $"sim_sub_{Guid.NewGuid():N}";
+            var simCusId = $"sim_cus_{cmd.UserId[..Math.Min(8, cmd.UserId.Length)]}";
+            var simSub = Subscription.Create(cmd.UserId, plan.Id, simCusId, simSubId, SubscriptionStatus.Active);
+            simSub.SyncFromStripe(
+                SubscriptionStatus.Active,
+                DateTime.UtcNow,
+                DateTime.UtcNow.AddMonths(plan.Interval == Domain.Enums.BillingInterval.Year ? 12 : 1),
+                cancelAtPeriodEnd: false,
+                canceledAt: null,
+                trialEnd: null);
+            await subscriptions.AddAsync(simSub, ct);
+            await uow.CommitAsync(ct);
+            logger.LogInformation("Simulated subscription {SubId} for user {UserId}", simSubId, cmd.UserId);
+            return Result.Success(new SubscribeResponse(simSub.Id, simSubId, "active", null, null));
+        }
 
         var stripeCustomerId = await customerService.GetStripeCustomerIdAsync(cmd.UserId, ct);
         stripeCustomerId = await stripe.CreateOrGetCustomerAsync(
@@ -125,16 +183,30 @@ public class CancelSubscriptionHandler(
         var sub = await subscriptions.GetActiveByUserAsync(cmd.UserId, ct);
         if (sub is null) return Result.Failure("No active subscription found.");
 
-        var stripeResult = await stripe.CancelSubscriptionAsync(
-            sub.StripeSubscriptionId, cmd.AtPeriodEnd, ct);
+        if (sub.StripeSubscriptionId.StartsWith("sim_"))
+        {
+            sub.SyncFromStripe(
+                sub.Status,
+                sub.CurrentPeriodStart,
+                sub.CurrentPeriodEnd,
+                cancelAtPeriodEnd: cmd.AtPeriodEnd,
+                canceledAt: cmd.AtPeriodEnd ? null : DateTime.UtcNow,
+                trialEnd: sub.TrialEnd);
+        }
+        else
+        {
+            var stripeResult = await stripe.CancelSubscriptionAsync(
+                sub.StripeSubscriptionId, cmd.AtPeriodEnd, ct);
 
-        sub.SyncFromStripe(
-            SubscribeHandler.MapStatus(stripeResult.Status),
-            stripeResult.CurrentPeriodStart,
-            stripeResult.CurrentPeriodEnd,
-            stripeResult.CancelAtPeriodEnd,
-            stripeResult.CanceledAt,
-            stripeResult.TrialEnd);
+            sub.SyncFromStripe(
+                SubscribeHandler.MapStatus(stripeResult.Status),
+                stripeResult.CurrentPeriodStart,
+                stripeResult.CurrentPeriodEnd,
+                stripeResult.CancelAtPeriodEnd,
+                stripeResult.CanceledAt,
+                stripeResult.TrialEnd);
+        }
+
         subscriptions.Update(sub);
         await uow.CommitAsync(ct);
         return Result.Success();
@@ -162,15 +234,29 @@ public class ResumeSubscriptionHandler(
         if (!sub.CancelAtPeriodEnd)
             return Result.Failure("Subscription is not scheduled to cancel.");
 
-        var stripeResult = await stripe.ResumeSubscriptionAsync(sub.StripeSubscriptionId, ct);
+        if (sub.StripeSubscriptionId.StartsWith("sim_"))
+        {
+            sub.SyncFromStripe(
+                sub.Status,
+                sub.CurrentPeriodStart,
+                sub.CurrentPeriodEnd,
+                cancelAtPeriodEnd: false,
+                canceledAt: null,
+                trialEnd: sub.TrialEnd);
+        }
+        else
+        {
+            var stripeResult = await stripe.ResumeSubscriptionAsync(sub.StripeSubscriptionId, ct);
 
-        sub.SyncFromStripe(
-            SubscribeHandler.MapStatus(stripeResult.Status),
-            stripeResult.CurrentPeriodStart,
-            stripeResult.CurrentPeriodEnd,
-            stripeResult.CancelAtPeriodEnd,
-            stripeResult.CanceledAt,
-            stripeResult.TrialEnd);
+            sub.SyncFromStripe(
+                SubscribeHandler.MapStatus(stripeResult.Status),
+                stripeResult.CurrentPeriodStart,
+                stripeResult.CurrentPeriodEnd,
+                stripeResult.CancelAtPeriodEnd,
+                stripeResult.CanceledAt,
+                stripeResult.TrialEnd);
+        }
+
         subscriptions.Update(sub);
         await uow.CommitAsync(ct);
         return Result.Success();

@@ -196,10 +196,9 @@ public static class ServiceExtensions
     {
         var redis = config.GetConnectionString("Redis");
 
+        services.AddMemoryCache();
         if (!string.IsNullOrEmpty(redis))
             services.AddStackExchangeRedisCache(opt => opt.Configuration = redis);
-        else
-            services.AddMemoryCache();
 
         return services;
     }

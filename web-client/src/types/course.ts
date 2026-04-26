@@ -9,6 +9,7 @@ export interface LessonDetail {
   durationSeconds: number
   contentUrl: string | null
   isFreePreview: boolean
+  hasVideo: boolean
 }
 
 export interface ModuleDetail {

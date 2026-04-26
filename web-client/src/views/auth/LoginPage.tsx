@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useLogin, useResendConfirmation } from '../../hooks/useAuth'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
 
 const loginSchema = z.object({
@@ -17,7 +17,9 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const loginMutation = useLogin()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') ?? undefined
+  const loginMutation = useLogin(redirectTo)
   const resendMutation = useResendConfirmation()
   const router = useRouter()
   useRedirectIfAuthenticated()

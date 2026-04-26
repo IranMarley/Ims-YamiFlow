@@ -43,6 +43,8 @@ public sealed class PostgresAuditDataProvider : AuditDataProvider
                        ?? auditEvent.CustomFields.GetValueOrDefault("UserName")?.ToString();
         var ipAddress = httpContext?.Connection.RemoteIpAddress?.ToString()
                         ?? auditEvent.CustomFields.GetValueOrDefault("IpAddress")?.ToString();
+        var source = auditEvent.CustomFields.GetValueOrDefault("Source")?.ToString()
+                     ?? (httpContext is not null ? "API" : "System");
 
         var efEvent = auditEvent.GetEntityFrameworkEvent();
 
@@ -71,7 +73,7 @@ public sealed class PostgresAuditDataProvider : AuditDataProvider
 
             var id = await connection.ExecuteScalarAsync<long>(sql, new
             {
-                Source = "API",
+                Source = source,
                 EntityName = entityName,
                 Action = entry.Action,
                 UserId = userId,

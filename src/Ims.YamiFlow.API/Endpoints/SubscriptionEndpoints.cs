@@ -38,10 +38,14 @@ public static class SubscriptionEndpoints
             CancellationToken ct) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var result = await handler.Handle(new SubscribeCommand(userId, req.PlanId), ct);
+            var simulate = string.IsNullOrEmpty(stripe.PublishableKey);
+            var result = await handler.Handle(new SubscribeCommand(userId, req.PlanId, simulate), ct);
             if (!result.IsSuccess) return Results.BadRequest(result.Error);
 
-            // Frontend needs clientSecret (Elements) and publishableKey (init).
+            // Simulated path: no payment step, return as-is
+            if (simulate) return Results.Ok(result.Value);
+
+            // Real Stripe path: attach publishable key for Elements init
             var body = result.Value! with { PublishableKey = stripe.PublishableKey };
             return Results.Ok(body);
         })

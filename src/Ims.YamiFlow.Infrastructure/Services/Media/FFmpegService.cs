@@ -57,6 +57,29 @@ public sealed class FFmpegService(
         await WriteMasterPlaylistAsync(outputDir);
     }
 
+    // Single-pass encode: produces 360.mp4, 720.mp4, 1080.mp4 under outputDir.
+    public async Task GenerateMp4sAsync(string inputPath, string outputDir, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(outputDir);
+
+        var args = string.Join(" ",
+            $"-i \"{inputPath}\"",
+            "-filter_complex",
+            "\"[0:v]split=3[v1][v2][v3];[v1]scale=-2:360[v360];[v2]scale=-2:720[v720];[v3]scale=-2:1080[v1080]\"",
+
+            "-map [v360] -map 0:a? -c:v:0 libx264 -crf 28 -preset fast -movflags +faststart -c:a:0 aac -b:a:0 128k",
+            $"\"{outputDir}/360.mp4\"",
+
+            "-map [v720] -map 0:a? -c:v:1 libx264 -crf 23 -preset fast -movflags +faststart -c:a:1 aac -b:a:1 128k",
+            $"\"{outputDir}/720.mp4\"",
+
+            "-map [v1080] -map 0:a? -c:v:2 libx264 -crf 20 -preset fast -movflags +faststart -c:a:2 aac -b:a:2 192k",
+            $"\"{outputDir}/1080.mp4\""
+        );
+
+        await RunAsync(_ffmpeg, args, ct);
+    }
+
     public async Task GenerateThumbnailAsync(
         string inputPath, string outputPath, int atSecond = 5, CancellationToken ct = default)
     {

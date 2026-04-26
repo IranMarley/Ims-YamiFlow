@@ -3,8 +3,14 @@ using Ims.YamiFlow.Application.Commands.Courses;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Courses;
 using Ims.YamiFlow.Domain.Enums;
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+using Ims.YamiFlow.Infrastructure.Services.Media;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace Ims.YamiFlow.API.Endpoints;
 
@@ -69,6 +75,64 @@ public static class CourseEndpoints
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Course, Operations.Update))
         .WithName("ArchiveCourse");
+
+        group.MapPost("/{courseId:guid}/thumbnail", async (
+            Guid courseId,
+            IFormFile? file,
+            ICourseRepository courseRepo,
+            IUnitOfWork uow,
+            IOptions<StorageOptions> storageOpts,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            if (file is null || file.Length == 0)
+                return Results.BadRequest("No file provided.");
+
+            var instructorId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var course = await courseRepo.GetByIdAsync(courseId, ct);
+            if (course is null) return Results.NotFound();
+            if (course.InstructorId != instructorId) return Results.Forbid();
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".webp"))
+                return Results.BadRequest("Unsupported image format.");
+
+            var dir = Path.Combine(storageOpts.Value.RootPath, "courses", courseId.ToString());
+            Directory.CreateDirectory(dir);
+
+            // Remove any existing thumbnail regardless of extension
+            foreach (var old in Directory.GetFiles(dir, "thumbnail.*"))
+                File.Delete(old);
+
+            // Always save as JPEG after resizing to max 1280×720, preserving aspect ratio
+            var filePath = Path.Combine(dir, "thumbnail.jpg");
+            await using var inputStream = file.OpenReadStream();
+            using var image = await Image.LoadAsync(inputStream, ct);
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(1280, 720),
+                Mode = ResizeMode.Max,
+            }));
+            await image.SaveAsync(filePath, new JpegEncoder { Quality = 85 }, ct);
+
+            course.SetThumbnail($"/api/courses/{courseId}/thumbnail");
+            await uow.CommitAsync(ct);
+
+            return Results.Ok(new { thumbnailUrl = $"/api/courses/{courseId}/thumbnail" });
+        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Course, Operations.Update))
+        .DisableAntiforgery()
+        .WithName("UploadCourseThumbnail");
+
+        group.MapGet("/{courseId:guid}/thumbnail", (
+            Guid courseId,
+            IOptions<StorageOptions> storageOpts) =>
+        {
+            var path = Path.Combine(storageOpts.Value.RootPath, "courses", courseId.ToString(), "thumbnail.jpg");
+            return File.Exists(path) ? Results.File(path, "image/jpeg") : Results.NotFound();
+        })
+        .AllowAnonymous()
+        .WithName("GetCourseThumbnail");
     }
 }
 

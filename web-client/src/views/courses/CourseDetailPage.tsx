@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useCourse } from '../../hooks/useCourses'
@@ -22,13 +22,59 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+const BASE_URL = API_BASE
+
 function PreviewPlayer({ lesson, onClose }: { lesson: LessonDetail; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hlsRef = useRef<any>(null)
+
+  useEffect(() => {
+    if (!lesson.hasVideo || !videoRef.current) return
+    const manifestUrl = `${API_BASE}/api/lessons/${lesson.lessonId}/video/manifest`
+    const { accessToken } = useAuthStore.getState()
+    let destroyed = false
+
+    import('hls.js').then(({ default: Hls }) => {
+      if (destroyed || !videoRef.current) return
+      if (Hls.isSupported()) {
+        if (hlsRef.current) hlsRef.current.destroy()
+        const hls = new Hls({
+          xhrSetup: (xhr: XMLHttpRequest) => {
+            if (accessToken) xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`)
+          },
+        })
+        hlsRef.current = hls
+        hls.loadSource(manifestUrl)
+        hls.attachMedia(videoRef.current)
+      } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+        videoRef.current.src = manifestUrl
+      }
+    })
+
+    return () => {
+      destroyed = true
+      if (hlsRef.current) {
+        hlsRef.current.destroy()
+        hlsRef.current = null
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.lessonId])
+
+  const isExternalUrl = lesson.contentUrl?.startsWith('http://') || lesson.contentUrl?.startsWith('https://')
+
   return (
     <div className="mt-3 rounded-xl overflow-hidden border border-primary/30 bg-background">
-      {lesson.contentUrl ? (
+      {lesson.hasVideo ? (
+        <div className="aspect-video bg-black">
+          <video ref={videoRef} className="w-full h-full" controls playsInline />
+        </div>
+      ) : isExternalUrl ? (
         <div className="aspect-video">
           <iframe
-            src={lesson.contentUrl}
+            src={lesson.contentUrl!}
             className="w-full h-full"
             allow="autoplay; fullscreen"
             allowFullScreen
@@ -43,7 +89,7 @@ function PreviewPlayer({ lesson, onClose }: { lesson: LessonDetail; onClose: () 
                 d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-subtle text-xs">No preview URL configured</p>
+            <p className="text-subtle text-xs">No preview available</p>
           </div>
         </div>
       )}
@@ -241,12 +287,20 @@ export default function CourseDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="h-56 sm:h-72 rounded-2xl bg-gradient-to-br from-primary/25 via-primary/10 to-background border border-border flex items-center justify-center">
-              <svg className="w-16 h-16 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="h-56 sm:h-72 rounded-2xl bg-gradient-to-br from-primary/25 via-primary/10 to-background border border-border flex items-center justify-center overflow-hidden">
+              {course.thumbnail ? (
+                <img
+                  src={`${BASE_URL}${course.thumbnail}`}
+                  alt={course.title}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <svg className="w-16 h-16 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
             </div>
 
             <div>
@@ -271,26 +325,6 @@ export default function CourseDetailPage() {
 
             {modules.length > 0 && <CurriculumSection modules={modules} />}
 
-            <Card>
-              <h2 className="text-lg font-semibold text-text mb-4">What you&apos;ll learn</h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  'Solid foundational concepts',
-                  'Hands-on projects and exercises',
-                  'Real-world application techniques',
-                  'Best practices from industry experts',
-                  'Certificate upon completion',
-                  'Lifetime access to content',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-subtle">
-                    <svg className="w-4 h-4 text-success mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </Card>
           </div>
 
           {/* Enrollment / access card */}

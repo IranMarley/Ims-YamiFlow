@@ -78,6 +78,8 @@ public class Course
         IsFree = isFree;
     }
 
+    public void SetThumbnail(string? url) => Thumbnail = url;
+
     public void RemoveModule(Guid moduleId)
     {
         var module = _modules.FirstOrDefault(m => m.Id == moduleId)

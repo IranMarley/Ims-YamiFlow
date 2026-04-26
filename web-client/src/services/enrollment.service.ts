@@ -1,5 +1,5 @@
 import { api } from '../lib/axios'
-import type { Enrollment } from '../types/enrollment'
+import type { Enrollment, EnrollmentProgress, CertificateResponse } from '../types/enrollment'
 import type { PagedResult } from '../types/course'
 
 export const enrollmentService = {
@@ -24,6 +24,24 @@ export const enrollmentService = {
 
   async getMyCourseIds(): Promise<string[]> {
     const response = await api.get<string[]>('/api/enrollments/my/course-ids')
+    return response.data
+  },
+
+  async getProgress(enrollmentId: string): Promise<EnrollmentProgress> {
+    const response = await api.get<EnrollmentProgress>(`/api/enrollments/${enrollmentId}/progress`)
+    return response.data
+  },
+
+  async getCertificate(enrollmentId: string): Promise<CertificateResponse | null> {
+    const response = await api.get<CertificateResponse | null>(
+      `/api/enrollments/${enrollmentId}/certificate`,
+      { validateStatus: (s) => s === 200 || s === 204 }
+    )
+    return response.status === 204 ? null : response.data
+  },
+
+  async issueCertificate(enrollmentId: string): Promise<CertificateResponse> {
+    const response = await api.post<CertificateResponse>(`/api/enrollments/${enrollmentId}/certificate`)
     return response.data
   },
 }

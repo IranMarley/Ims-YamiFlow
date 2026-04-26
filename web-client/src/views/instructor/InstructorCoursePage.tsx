@@ -27,7 +27,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import Header from '../../components/layout/Header'
 import Spinner from '../../components/ui/Spinner'
-import { api } from '../../lib/axios'
+import { api, BASE_URL } from '../../lib/axios'
 import { videoService } from '../../services/video.service'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -36,8 +36,6 @@ interface LessonDetail {
   lessonId: string
   title: string
   order: number
-  type: number
-  durationSeconds: number
   contentUrl: string | null
   isFreePreview: boolean
 }
@@ -97,7 +95,7 @@ const reorderModulesApi = (courseId: string, items: { moduleId: string; order: n
 const addLessonApi = (
   courseId: string,
   moduleId: string,
-  data: { title: string; type: number; durationSeconds: number; order: number },
+  data: { title: string; order: number },
 ) => api.post(`/api/courses/${courseId}/modules/${moduleId}/lessons`, data)
 
 const deleteLessonApi = (courseId: string, moduleId: string, lessonId: string) =>
@@ -107,8 +105,16 @@ const updateLessonApi = (
   courseId: string,
   moduleId: string,
   lessonId: string,
-  data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean },
+  data: { title: string; contentUrl: string | null; isFreePreview: boolean },
 ) => api.put(`/api/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, data)
+
+const uploadThumbnailApi = async (courseId: string, file: File) => {
+  const form = new FormData()
+  form.append('file', file)
+  return api.post<{ thumbnailUrl: string }>(`/api/courses/${courseId}/thumbnail`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data)
+}
 
 const reorderLessonsApi = (
   courseId: string,
@@ -131,7 +137,6 @@ const moveLessonApi = (
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
-const LESSON_TYPES = ['Video', 'Text', 'Quiz']
 const STATUS_LABELS = ['Draft', 'Published', 'Archived']
 const STATUS_COLORS = [
   'bg-warning/15 text-warning',
@@ -186,9 +191,17 @@ function VideoUploadPanel({
   const jobStatus = state?.jobStatus
   const isActive  = jobStatus === 'Pending' || jobStatus === 'Processing'
 
+  const MAX_VIDEO_BYTES = 200 * 1024 * 1024 // 200 MB
+
   const handleSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) onUpload(lesson.lessonId, file)
+    if (!file) return
+    if (file.size > MAX_VIDEO_BYTES) {
+      toast.error(`File is too large. Maximum allowed size is 200 MB (your file: ${(file.size / 1024 / 1024).toFixed(1)} MB).`)
+      e.target.value = ''
+      return
+    }
+    onUpload(lesson.lessonId, file)
     e.target.value = ''
   }
 
@@ -278,21 +291,17 @@ function LessonRow({
   dragHandleListeners?: object
   dragHandleAttributes?: object
   onToggle: () => void
-  onSave: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onSave: (moduleId: string, lessonId: string, data: { title: string; contentUrl: string | null; isFreePreview: boolean }) => void
   onDelete: (moduleId: string, lessonId: string) => void
   onUpload: (lessonId: string, file: File) => void
 }) {
   const [title, setTitle]             = useState(lesson.title)
-  const [type, setType]               = useState(lesson.type)
-  const [duration, setDuration]       = useState(String(lesson.durationSeconds))
   const [freePreview, setFreePreview] = useState(lesson.isFreePreview)
   const [dirty, setDirty]             = useState(false)
 
   useEffect(() => {
     if (!dirty) {
       setTitle(lesson.title)
-      setType(lesson.type)
-      setDuration(String(lesson.durationSeconds))
       setFreePreview(lesson.isFreePreview)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,27 +361,6 @@ function LessonRow({
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-subtle mb-1">Type</label>
-              <select
-                value={type}
-                onChange={(e) => { setType(Number(e.target.value)); setDirty(true) }}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                {LESSON_TYPES.map((t, i) => <option key={t} value={i}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-subtle mb-1">Duration (seconds)</label>
-              <input
-                suppressHydrationWarning
-                type="number"
-                min="0"
-                value={duration}
-                onChange={(e) => { setDuration(e.target.value); setDirty(true) }}
-                className="w-full px-3 py-2 rounded-lg bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
-            </div>
             <div className="flex items-center gap-3 pt-5">
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -392,8 +380,6 @@ function LessonRow({
             onClick={() => {
               onSave(moduleId, lesson.lessonId, {
                 title,
-                type,
-                durationSeconds: parseInt(duration) || 0,
                 contentUrl: lesson.contentUrl,
                 isFreePreview: freePreview,
               })
@@ -404,9 +390,7 @@ function LessonRow({
             Save lesson
           </button>
 
-          {type === 0 && (
-            <VideoUploadPanel courseId={courseId} lesson={lesson} state={videoState} onUpload={onUpload} />
-          )}
+          <VideoUploadPanel courseId={courseId} lesson={lesson} state={videoState} onUpload={onUpload} />
         </div>
       )}
     </div>
@@ -422,7 +406,7 @@ function SortableLessonRow(props: {
   expanded: boolean
   videoState: VideoUploadState | undefined
   onToggle: () => void
-  onSave: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onSave: (moduleId: string, lessonId: string, data: { title: string; contentUrl: string | null; isFreePreview: boolean }) => void
   onDelete: (moduleId: string, lessonId: string) => void
   onUpload: (lessonId: string, file: File) => void
 }) {
@@ -505,7 +489,7 @@ function SortableModuleCard({
   onAddLesson: (moduleId: string, title: string, order: number) => void
   onNewLessonTitleChange: (moduleId: string, value: string) => void
   onToggleLesson: (lessonId: string) => void
-  onSaveLesson: (moduleId: string, lessonId: string, data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }) => void
+  onSaveLesson: (moduleId: string, lessonId: string, data: { title: string; contentUrl: string | null; isFreePreview: boolean }) => void
   onDeleteLesson: (moduleId: string, lessonId: string) => void
   onUpload: (lessonId: string, file: File) => void
 }) {
@@ -700,12 +684,15 @@ export default function InstructorCoursePage() {
   const queryClient = useQueryClient()
 
   // Course details state
-  const [tab, setTab]       = useState<'details' | 'modules'>('details')
-  const [dirty, setDirty]   = useState(false)
-  const [title, setTitle]   = useState('')
-  const [desc, setDesc]     = useState('')
-  const [isFree, setIsFree] = useState(false)
-  const [level, setLevel]   = useState(0)
+  const [tab, setTab]                       = useState<'details' | 'modules'>('details')
+  const [dirty, setDirty]                   = useState(false)
+  const [title, setTitle]                   = useState('')
+  const [desc, setDesc]                     = useState('')
+  const [isFree, setIsFree]                 = useState(false)
+  const [level, setLevel]                   = useState(0)
+  const [thumbnailUrl, setThumbnailUrl]     = useState<string | null>(null)
+  const [thumbnailUploading, setThumbnailUploading] = useState(false)
+  const thumbnailInputRef                   = useRef<HTMLInputElement>(null)
 
   // Module/lesson UI state
   const [newModuleTitle, setNewModuleTitle]   = useState('')
@@ -769,6 +756,7 @@ export default function InstructorCoursePage() {
       setDesc(course.description)
       setIsFree(course.isFree)
       setLevel(course.level)
+      setThumbnailUrl(course.thumbnail)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.courseId])
@@ -844,7 +832,7 @@ export default function InstructorCoursePage() {
 
   const addLessonMutation = useMutation({
     mutationFn: ({ moduleId, lessonTitle, order }: { moduleId: string; lessonTitle: string; order: number }) =>
-      addLessonApi(courseId, moduleId, { title: lessonTitle, type: 0, durationSeconds: 0, order }),
+      addLessonApi(courseId, moduleId, { title: lessonTitle, order }),
     onSuccess: (_data, vars) => {
       setNewLessonTitle((prev) => ({ ...prev, [vars.moduleId]: '' }))
       invalidate()
@@ -863,7 +851,7 @@ export default function InstructorCoursePage() {
     }: {
       moduleId: string
       lessonId: string
-      data: { title: string; type: number; durationSeconds: number; contentUrl: string | null; isFreePreview: boolean }
+      data: { title: string; contentUrl: string | null; isFreePreview: boolean }
     }) => updateLessonApi(courseId, moduleId, lessonId, data),
     onSuccess: () => { invalidate(); toast.success('Lesson saved.') },
   })
@@ -885,6 +873,22 @@ export default function InstructorCoursePage() {
     }) => moveLessonApi(courseId, sourceModuleId, lessonId, targetModuleId, newOrder),
     onError: () => { invalidate(); toast.error('Failed to move lesson.') },
   })
+
+  // ── Thumbnail upload ───────────────────────────────────────────────────────
+
+  const handleThumbnailUpload = async (file: File) => {
+    setThumbnailUploading(true)
+    try {
+      const result = await uploadThumbnailApi(courseId, file)
+      setThumbnailUrl(result.thumbnailUrl)
+      invalidate()
+      toast.success('Thumbnail updated.')
+    } catch {
+      toast.error('Failed to upload thumbnail.')
+    } finally {
+      setThumbnailUploading(false)
+    }
+  }
 
   // ── Video upload ───────────────────────────────────────────────────────────
 
@@ -1210,6 +1214,49 @@ export default function InstructorCoursePage() {
               >
                 {updateMutation.isPending ? 'Saving…' : 'Save changes'}
               </button>
+            </div>
+
+            {/* Thumbnail */}
+            <div className="bg-surface border border-border rounded-2xl p-6 space-y-4">
+              <h3 className="text-sm font-semibold text-text">Course Thumbnail</h3>
+              <div className="flex items-start gap-4">
+                <div className="w-32 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+                  {thumbnailUrl ? (
+                    <img
+                      src={`${BASE_URL}${thumbnailUrl}`}
+                      alt="Thumbnail"
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <svg className="w-8 h-8 text-primary/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-subtle">JPG, PNG, or WebP. Recommended: 1280×720.</p>
+                  <button
+                    type="button"
+                    disabled={thumbnailUploading}
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs text-subtle hover:text-text hover:bg-surface-hover transition-colors disabled:opacity-50"
+                  >
+                    {thumbnailUploading ? 'Uploading…' : thumbnailUrl ? 'Replace thumbnail' : 'Upload thumbnail'}
+                  </button>
+                  <input
+                    ref={thumbnailInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleThumbnailUpload(file)
+                      e.target.value = ''
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}

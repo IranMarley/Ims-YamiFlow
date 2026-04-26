@@ -10,8 +10,11 @@ obj/
 .idea/
 *.sln.iml
 
-## Ignore web folder (frontend) - user requested
-/web/
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
 
 ## Secrets
 *secrets*

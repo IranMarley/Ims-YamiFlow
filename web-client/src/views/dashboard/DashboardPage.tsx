@@ -3,6 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '../../store/authStore'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { useCourses } from '../../hooks/useCourses'
+import { BASE_URL } from '../../lib/axios'
 import Header from '../../components/layout/Header'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
@@ -51,7 +52,7 @@ export default function DashboardPage() {
         {/* Welcome banner */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-text">
-            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
+            Welcome back{user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}!
           </h1>
           <p className="text-subtle mt-1">
             {enrolledCount > 0
@@ -129,14 +130,22 @@ export default function DashboardPage() {
                   padding="none"
                   onClick={() => router.push(`/courses/${course.courseId}`)}
                 >
-                  {/* Thumbnail placeholder */}
-                  <div className="h-36 rounded-t-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  {/* Thumbnail */}
+                  <div className="h-36 rounded-t-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center overflow-hidden">
+                    {course.thumbnail ? (
+                      <img
+                        src={`${BASE_URL}${course.thumbnail}`}
+                        alt={course.title}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <svg className="w-10 h-10 text-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-2">

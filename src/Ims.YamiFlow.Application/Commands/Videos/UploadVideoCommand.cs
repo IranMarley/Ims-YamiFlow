@@ -24,7 +24,7 @@ public record UploadVideoResponse(Guid JobId, string Status);
 public class UploadVideoValidator : AbstractValidator<UploadVideoCommand>
 {
     private static readonly string[] AllowedExtensions = [".mp4", ".mov", ".avi", ".mkv", ".webm"];
-    private const long MaxBytes = 4L * 1024 * 1024 * 1024; // 4 GB
+    public const long MaxBytes = 200L * 1024 * 1024; // 200 MB
 
     public UploadVideoValidator()
     {
@@ -34,7 +34,7 @@ public class UploadVideoValidator : AbstractValidator<UploadVideoCommand>
 
         RuleFor(x => x.FileSizeBytes)
             .GreaterThan(0).WithMessage("File is empty.")
-            .LessThanOrEqualTo(MaxBytes).WithMessage("File exceeds the 4 GB limit.");
+            .LessThanOrEqualTo(MaxBytes).WithMessage("File exceeds the 200 MB limit.");
 
         RuleFor(x => x.FileName)
             .Must(name => AllowedExtensions.Contains(

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Lessons;
 using Ims.YamiFlow.Application.IAM.Constants;
-using Ims.YamiFlow.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -21,7 +20,7 @@ public static class LessonEndpoints
         {
             var result = await handler.Handle(new AddLessonCommand(
                 courseId, moduleId, user.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                req.Title, req.Type, req.DurationSeconds, req.Order, req.ContentUrl, req.IsFreePreview), ct);
+                req.Title, req.Order, req.ContentUrl, req.IsFreePreview), ct);
             return result.IsSuccess
                 ? Results.Created($"/api/lessons/{result.Value!.LessonId}", result.Value)
                 : Results.BadRequest(result.Error);
@@ -35,7 +34,7 @@ public static class LessonEndpoints
         {
             var result = await handler.Handle(new UpdateLessonCommand(
                 courseId, moduleId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                req.Title, req.Type, req.DurationSeconds, req.ContentUrl, req.IsFreePreview), ct);
+                req.Title, req.ContentUrl, req.IsFreePreview), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Update))
@@ -89,11 +88,7 @@ public static class LessonEndpoints
                 enrollmentId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!), ct);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         })
-        .RequireAuthorization(x =>
-        {
-            x.RequireClaim(Resources.Lesson, Operations.Read);
-            x.AddRequirements(new Authorization.ActiveSubscriptionRequirement());
-        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Read))
         .WithName("CompleteLesson");
 
         progress.MapPost("/progress", async (
@@ -104,22 +99,14 @@ public static class LessonEndpoints
                 enrollmentId, lessonId, user.FindFirstValue(ClaimTypes.NameIdentifier)!, req.WatchedSeconds), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
-        .RequireAuthorization(x =>
-        {
-            x.RequireClaim(Resources.Lesson, Operations.Read);
-            x.AddRequirements(new Authorization.ActiveSubscriptionRequirement());
-        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Lesson, Operations.Read))
         .WithName("SaveProgress");
     }
 }
 
 // ── Request records ───────────────────────────────────
-public record AddLessonRequest(
-    string Title, LessonType Type, int DurationSeconds,
-    int Order, string? ContentUrl, bool IsFreePreview);
-public record UpdateLessonRequest(
-    string Title, LessonType Type, int DurationSeconds,
-    string? ContentUrl, bool IsFreePreview);
+public record AddLessonRequest(string Title, int Order, string? ContentUrl, bool IsFreePreview);
+public record UpdateLessonRequest(string Title, string? ContentUrl, bool IsFreePreview);
 public record SaveProgressRequest(int WatchedSeconds);
 public record ReorderLessonItem(Guid LessonId, int Order);
 public record ReorderLessonsRequest(IReadOnlyList<ReorderLessonItem> Items);

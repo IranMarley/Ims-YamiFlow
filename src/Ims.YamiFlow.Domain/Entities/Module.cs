@@ -15,9 +15,9 @@ public class Module
     public static Module Create(Guid courseId, string title, int order)
         => new() { Id = Guid.NewGuid(), CourseId = courseId, Title = title, Order = order };
 
-    public Lesson AddLesson(string title, LessonType type, int durationSeconds, int order, string? contentUrl = null)
+    public Lesson AddLesson(string title, int order, string? contentUrl = null)
     {
-        var lesson = Lesson.Create(Id, title, type, durationSeconds, order, contentUrl);
+        var lesson = Lesson.Create(Id, title, order, contentUrl);
         _lessons.Add(lesson);
         return lesson;
     }

@@ -142,8 +142,8 @@ export default function MyEnrollmentsPage() {
                         </p>
                       </div>
 
-                      {/* Cancel confirm flow */}
-                      {isConfirming ? (
+                      {/* Cancel confirm flow — hidden when course is complete */}
+                      {progress < 100 && (isConfirming ? (
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-subtle hidden sm:block">Cancel enrollment?</span>
                           <Button
@@ -171,7 +171,7 @@ export default function MyEnrollmentsPage() {
                         >
                           Cancel
                         </Button>
-                      )}
+                      ))}
                     </div>
 
                     {/* Progress bar */}

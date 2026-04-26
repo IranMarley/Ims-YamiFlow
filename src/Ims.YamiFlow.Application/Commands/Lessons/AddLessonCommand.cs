@@ -9,8 +9,6 @@ public record AddLessonCommand(
     Guid ModuleId,
     string InstructorId,
     string Title,
-    LessonType Type,
-    int DurationSeconds,
     int Order,
     string? ContentUrl,
     bool IsFreePreview
@@ -25,7 +23,6 @@ public class AddLessonValidator : AbstractValidator<AddLessonCommand>
     public AddLessonValidator()
     {
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.DurationSeconds).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Order).GreaterThan(0);
     }
 }
@@ -47,7 +44,7 @@ public class AddLessonHandler(ICourseRepository courses, IUnitOfWork uow)
         if (module is null)
             return Result.Failure<AddLessonResponse>("Module not found.");
 
-        var lesson = module.AddLesson(cmd.Title, cmd.Type, cmd.DurationSeconds, cmd.Order, cmd.ContentUrl);
+        var lesson = module.AddLesson(cmd.Title, cmd.Order, cmd.ContentUrl);
         if (cmd.IsFreePreview) lesson.MakeFreePreview();
 
         courses.AddLesson(lesson);

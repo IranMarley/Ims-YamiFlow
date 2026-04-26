@@ -15,10 +15,32 @@ public sealed class VideoAsset
 
     private VideoAsset() { }
 
+    public void UpdatePaths(
+        string hlsManifestPath,
+        string? thumbnailPath,
+        string? mp4Path360,
+        string? mp4Path720,
+        string? mp4Path1080,
+        int durationSeconds,
+        long fileSizeBytes)
+    {
+        HlsManifestPath = hlsManifestPath;
+        ThumbnailPath = thumbnailPath;
+        Mp4Path360 = mp4Path360;
+        Mp4Path720 = mp4Path720;
+        Mp4Path1080 = mp4Path1080;
+        DurationSeconds = durationSeconds;
+        FileSizeBytes = fileSizeBytes;
+        ProcessedAt = DateTime.UtcNow;
+    }
+
     public static VideoAsset Create(
         Guid lessonId,
         string hlsManifestPath,
         string? thumbnailPath,
+        string? mp4Path360,
+        string? mp4Path720,
+        string? mp4Path1080,
         int durationSeconds,
         long fileSizeBytes) => new()
     {
@@ -26,6 +48,9 @@ public sealed class VideoAsset
         LessonId = lessonId,
         HlsManifestPath = hlsManifestPath,
         ThumbnailPath = thumbnailPath,
+        Mp4Path360 = mp4Path360,
+        Mp4Path720 = mp4Path720,
+        Mp4Path1080 = mp4Path1080,
         DurationSeconds = durationSeconds,
         FileSizeBytes = fileSizeBytes,
         ProcessedAt = DateTime.UtcNow

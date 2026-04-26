@@ -131,6 +131,28 @@ public class StripeService : IStripeService
         return Map(sub);
     }
 
+    public async Task<StripeSubscriptionResult> SwitchPlanAsync(
+        string subscriptionId,
+        string newPriceId,
+        CancellationToken ct = default)
+    {
+        var current = await _subscriptions.GetAsync(subscriptionId,
+            new SubscriptionGetOptions { Expand = ["items"] },
+            cancellationToken: ct);
+
+        var itemId = current.Items.Data.First().Id;
+
+        var updated = await _subscriptions.UpdateAsync(subscriptionId,
+            new SubscriptionUpdateOptions
+            {
+                Items = [new SubscriptionItemOptions { Id = itemId, Price = newPriceId }],
+                ProrationBehavior = "create_prorations",
+            },
+            cancellationToken: ct);
+
+        return Map(updated);
+    }
+
     public string PublishableKey => _options.PublishableKey;
 
     private static StripeSubscriptionResult Map(Subscription sub)

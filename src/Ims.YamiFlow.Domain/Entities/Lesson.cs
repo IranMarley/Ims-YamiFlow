@@ -13,15 +13,14 @@ public class Lesson
 
     private Lesson() { }
 
-    public static Lesson Create(Guid moduleId, string title, LessonType type,
-        int durationSeconds, int order, string? contentUrl)
+    public static Lesson Create(Guid moduleId, string title, int order, string? contentUrl = null)
         => new()
         {
             Id = Guid.NewGuid(),
             ModuleId = moduleId,
             Title = title,
-            Type = type,
-            DurationSeconds = durationSeconds,
+            Type = LessonType.Video,
+            DurationSeconds = 0,
             Order = order,
             ContentUrl = contentUrl
         };
@@ -42,14 +41,12 @@ public class Lesson
         DurationSeconds = durationSeconds;
     }
 
-    public void Update(string title, LessonType type, int durationSeconds, string? contentUrl, bool isFreePreview)
+    public void Update(string title, string? contentUrl, bool isFreePreview)
     {
         if (string.IsNullOrWhiteSpace(title))
             throw new DomainException("Lesson title cannot be empty.");
 
         Title = title;
-        Type = type;
-        DurationSeconds = durationSeconds;
         ContentUrl = contentUrl;
         IsFreePreview = isFreePreview;
     }

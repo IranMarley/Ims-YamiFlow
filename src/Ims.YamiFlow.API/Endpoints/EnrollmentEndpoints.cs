@@ -20,11 +20,7 @@ public static class EnrollmentEndpoints
                 ? Results.Created($"/api/enrollments/{result.Value!.EnrollmentId}", result.Value)
                 : Results.BadRequest(result.Error);
         })
-        .RequireAuthorization(x =>
-        {
-            x.RequireClaim(Resources.Enrollment, Operations.Create);
-            x.AddRequirements(new Authorization.ActiveSubscriptionRequirement());
-        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Enrollment, Operations.Create))
         .WithName("Enroll");
 
         group.MapPost("/{enrollmentId:guid}/cancel", async (

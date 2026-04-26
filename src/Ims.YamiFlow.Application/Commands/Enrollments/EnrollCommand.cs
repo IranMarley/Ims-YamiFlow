@@ -1,7 +1,6 @@
 using FluentValidation;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
-
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 
 namespace Ims.YamiFlow.Application.Commands.Enrollments;
@@ -40,12 +39,11 @@ public class EnrollValidator : AbstractValidator<EnrollCommand>
 }
 
 // ── Handler ───────────────────────────────────────────
-// Access is gated at the HTTP layer via ActiveSubscriptionRequirement, so reaching
-// this handler already implies the student has a valid subscription. Enrollment is
-// now a tracking concern (progress, completion) — not a purchase. PricePaid is 0.
+// Free courses can be enrolled directly. Premium courses require an active subscription.
 public class EnrollHandler(
     ICourseRepository courseRepository,
     IEnrollmentRepository enrollmentRepository,
+    ISubscriptionRepository subscriptionRepository,
     IUnitOfWork uow)
     : IHandler<EnrollCommand, Result<EnrollResponse>>
 {
@@ -57,6 +55,13 @@ public class EnrollHandler(
 
         if (!course.IsPublished)
             return Result.Failure<EnrollResponse>("Course is not available.");
+
+        if (!course.IsFree)
+        {
+            var sub = await subscriptionRepository.GetActiveByUserAsync(cmd.StudentId, ct);
+            if (sub is null || !sub.GrantsAccess())
+                return Result.Failure<EnrollResponse>("An active subscription is required to enroll in premium courses.");
+        }
 
         var alreadyEnrolled = await enrollmentRepository
             .ExistsAsync(cmd.StudentId, cmd.CourseId, ct);

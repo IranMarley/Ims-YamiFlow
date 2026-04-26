@@ -13,7 +13,8 @@ public record LessonDetail(
     int Type,
     int DurationSeconds,
     string? ContentUrl,
-    bool IsFreePreview
+    bool IsFreePreview,
+    bool HasVideo
 );
 
 public record ModuleDetail(
@@ -73,6 +74,7 @@ file sealed class LessonRow
     public int DurationSeconds { get; init; }
     public string? ContentUrl { get; init; }
     public bool IsFreePreview { get; init; }
+    public bool HasVideo { get; init; }
 }
 
 // ── Handler ───────────────────────────────────────────
@@ -113,16 +115,18 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
             """;
 
         var lessonSql = """
-            SELECT l."Id"              AS LessonId,
-                   l."ModuleId"        AS ModuleId,
-                   l."Title"           AS Title,
-                   l."Order"           AS Order,
-                   l."Type"            AS Type,
-                   l."DurationSeconds" AS DurationSeconds,
-                   l."ContentUrl"      AS ContentUrl,
-                   l."IsFreePreview"   AS IsFreePreview
+            SELECT l."Id"                        AS LessonId,
+                   l."ModuleId"                  AS ModuleId,
+                   l."Title"                     AS Title,
+                   l."Order"                     AS Order,
+                   l."Type"                      AS Type,
+                   l."DurationSeconds"            AS DurationSeconds,
+                   l."ContentUrl"                AS ContentUrl,
+                   l."IsFreePreview"             AS IsFreePreview,
+                   (va."Id" IS NOT NULL)         AS HasVideo
             FROM "Lessons" l
             INNER JOIN "Modules" m ON m."Id" = l."ModuleId"
+            LEFT JOIN "VideoAssets" va ON va."LessonId" = l."Id"
             WHERE m."CourseId" = @CourseId
             ORDER BY m."Order", l."Order"
             """;
@@ -149,7 +153,8 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
                     l.Type,
                     l.DurationSeconds,
                     l.ContentUrl,
-                    l.IsFreePreview))
+                    l.IsFreePreview,
+                    l.HasVideo))
                 .ToList();
 
             return new ModuleDetail(m.ModuleId, m.Title, m.Order, moduleLessons);

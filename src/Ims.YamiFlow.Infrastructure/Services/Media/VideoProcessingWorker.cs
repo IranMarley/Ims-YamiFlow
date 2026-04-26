@@ -42,7 +42,7 @@ public sealed class VideoProcessingWorker(
         var ffmpeg = scope.ServiceProvider.GetRequiredService<FFmpegService>();
         var storage = scope.ServiceProvider.GetRequiredService<IOptions<StorageOptions>>().Value;
 
-        db.AuditDisabled = true;
+        db.ExtraFields["Source"] = "VideoProcessingWorker";
 
         // Claim one pending job atomically — concurrent workers cannot pick the same row.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -81,8 +81,9 @@ public sealed class VideoProcessingWorker(
         CancellationToken ct)
     {
         var inputPath  = Path.Combine(storage.RootPath, job.RawFilePath);
-        var hlsDir     = Path.Combine(storage.RootPath, "videos", job.CourseId.ToString(), job.LessonId.ToString(), "hls");
-        var thumbPath  = Path.Combine(storage.RootPath, "videos", job.CourseId.ToString(), job.LessonId.ToString(), "thumbnails", "thumb.jpg");
+        var hlsDir     = Path.Combine(storage.RootPath, "videos", job.LessonId.ToString(), "hls");
+        var mp4Dir     = Path.Combine(storage.RootPath, "videos", job.LessonId.ToString(), "mp4");
+        var thumbPath  = Path.Combine(storage.RootPath, "videos", job.LessonId.ToString(), "thumbnails", "thumb.jpg");
 
         try
         {
@@ -90,17 +91,27 @@ public sealed class VideoProcessingWorker(
                 "Processing video. JobId={JobId} LessonId={LessonId}", job.Id, job.LessonId);
 
             await ffmpeg.GenerateHlsAsync(inputPath, hlsDir, ct);
+            await ffmpeg.GenerateMp4sAsync(inputPath, mp4Dir, ct);
             await ffmpeg.GenerateThumbnailAsync(inputPath, thumbPath, ct: ct);
             var duration = await ffmpeg.GetDurationAsync(inputPath, ct);
 
-            var hlsRelative   = $"videos/{job.CourseId}/{job.LessonId}/hls/master.m3u8";
-            var thumbRelative = $"videos/{job.CourseId}/{job.LessonId}/thumbnails/thumb.jpg";
+            var hlsRelative    = $"videos/{job.LessonId}/hls/master.m3u8";
+            var thumbRelative  = $"videos/{job.LessonId}/thumbnails/thumb.jpg";
+            var mp4Relative360  = $"videos/{job.LessonId}/mp4/360.mp4";
+            var mp4Relative720  = $"videos/{job.LessonId}/mp4/720.mp4";
+            var mp4Relative1080 = $"videos/{job.LessonId}/mp4/1080.mp4";
             var fileSize = new FileInfo(inputPath).Length;
 
             // Upsert VideoAsset
             var existing = await db.VideoAssets.FirstOrDefaultAsync(a => a.LessonId == job.LessonId, ct);
             if (existing is null)
-                db.VideoAssets.Add(VideoAsset.Create(job.LessonId, hlsRelative, thumbRelative, duration, fileSize));
+                db.VideoAssets.Add(VideoAsset.Create(
+                    job.LessonId, hlsRelative, thumbRelative,
+                    mp4Relative360, mp4Relative720, mp4Relative1080, duration, fileSize));
+            else
+                existing.UpdatePaths(
+                    hlsRelative, thumbRelative,
+                    mp4Relative360, mp4Relative720, mp4Relative1080, duration, fileSize);
 
             // Update lesson ContentUrl so it points to the HLS manifest
             var lesson = await db.Lessons.FindAsync([job.LessonId], ct);

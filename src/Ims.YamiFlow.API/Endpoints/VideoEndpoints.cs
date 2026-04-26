@@ -1,10 +1,14 @@
 using System.Security.Claims;
+using Dapper;
 using Ims.YamiFlow.Application.Commands.Videos;
+using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Videos;
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Infrastructure.Services.Media;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -19,7 +23,9 @@ public static class VideoEndpoints
             .DisableAntiforgery()
             .WithTags(Resources.Lesson)
             .WithName("UploadVideo")
-            .Accepts<IFormFile>("multipart/form-data");
+            .Accepts<IFormFile>("multipart/form-data")
+            .WithMetadata(new RequestSizeLimitAttribute(UploadVideoValidator.MaxBytes))
+            .WithMetadata(new RequestFormLimitsAttribute { MultipartBodyLengthLimit = UploadVideoValidator.MaxBytes });
 
         // ── Job status ─────────────────────────────────────────────────────────
         app.MapGet("/api/video-jobs/{jobId:guid}", GetJobStatus)
@@ -34,14 +40,16 @@ public static class VideoEndpoints
             .WithName("GetVideoJobByLesson");
 
         // ── Stream manifest ────────────────────────────────────────────────────
+        // AllowAnonymous: free-preview lessons are accessible without login.
+        // Manual access check runs inside the handler.
         app.MapGet("/api/lessons/{lessonId:guid}/video/manifest", GetManifest)
-            .RequireAuthorization(Authorization.ActiveSubscriptionRequirement.PolicyName)
+            .AllowAnonymous()
             .WithTags(Resources.Lesson)
             .WithName("GetVideoManifest");
 
         // ── HLS segments / sub-playlists ───────────────────────────────────────
         app.MapGet("/api/lessons/{lessonId:guid}/video/hls/{**filePath}", GetHlsFile)
-            .RequireAuthorization(Authorization.ActiveSubscriptionRequirement.PolicyName)
+            .AllowAnonymous()
             .WithTags(Resources.Lesson)
             .WithName("GetHlsFile");
     }
@@ -92,10 +100,24 @@ public static class VideoEndpoints
 
     private static async Task<IResult> GetManifest(
         Guid lessonId,
+        HttpContext httpContext,
         IOptions<StorageOptions> storageOpts,
         IVideoAssetRepository assets,
+        IDbConnectionFactory dbFactory,
+        ISubscriptionRepository subscriptionRepo,
+        IEnrollmentRepository enrollmentRepo,
+        IMemoryCache cache,
         CancellationToken ct)
     {
+        var info = await GetLessonAccessInfo(lessonId, dbFactory, cache, ct);
+        if (info is null)
+            return Results.NotFound("Lesson not found.");
+
+        if (!await CheckVideoAccess(info, httpContext.User, subscriptionRepo, enrollmentRepo, ct))
+            return httpContext.User.Identity?.IsAuthenticated == true
+                ? Results.Forbid()
+                : Results.Unauthorized();
+
         var asset = await assets.GetByLessonIdAsync(lessonId, ct);
         if (asset is null)
             return Results.NotFound("Video not yet processed.");
@@ -104,23 +126,42 @@ public static class VideoEndpoints
         if (!File.Exists(fullPath))
             return Results.NotFound("Manifest file missing.");
 
-        return Results.File(fullPath, "application/vnd.apple.mpegurl", "master.m3u8");
+        var content = await File.ReadAllTextAsync(fullPath, ct);
+        // Prepend "hls/" to sub-playlist URI lines so hls.js resolves them to /api/lessons/{id}/video/hls/...
+        // hls.js strips the last path segment of the manifest URL, giving base /api/lessons/{id}/video/.
+        // So "hls/360/stream.m3u8" resolves correctly to /api/lessons/{id}/video/hls/360/stream.m3u8.
+        content = RewriteManifestUris(content);
+
+        return Results.Content(content, "application/vnd.apple.mpegurl");
     }
 
-    private static IResult GetHlsFile(
+    private static async Task<IResult> GetHlsFile(
         Guid lessonId,
         string filePath,
-        IOptions<StorageOptions> storageOpts)
+        HttpContext httpContext,
+        IOptions<StorageOptions> storageOpts,
+        IDbConnectionFactory dbFactory,
+        ISubscriptionRepository subscriptionRepo,
+        IEnrollmentRepository enrollmentRepo,
+        IMemoryCache cache,
+        CancellationToken ct)
     {
-        // Prevent path traversal
         if (filePath.Contains(".."))
             return Results.BadRequest();
+
+        var info = await GetLessonAccessInfo(lessonId, dbFactory, cache, ct);
+        if (info is null)
+            return Results.NotFound();
+
+        if (!await CheckVideoAccess(info, httpContext.User, subscriptionRepo, enrollmentRepo, ct))
+            return httpContext.User.Identity?.IsAuthenticated == true
+                ? Results.Forbid()
+                : Results.Unauthorized();
 
         var root = storageOpts.Value.RootPath;
         var fullPath = Path.Combine(root, "videos", lessonId.ToString(), "hls",
             filePath.Replace('/', Path.DirectorySeparatorChar));
 
-        // Ensure the resolved path stays within the expected directory
         var expectedBase = Path.GetFullPath(Path.Combine(root, "videos", lessonId.ToString(), "hls"));
         var resolvedPath = Path.GetFullPath(fullPath);
         if (!resolvedPath.StartsWith(expectedBase, StringComparison.OrdinalIgnoreCase))
@@ -137,5 +178,81 @@ public static class VideoEndpoints
         };
 
         return Results.File(resolvedPath, contentType);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+
+    private sealed class LessonAccessRow
+    {
+        public bool IsFreePreview { get; init; }
+        public bool IsFree { get; init; }
+        public Guid CourseId { get; init; }
+    }
+
+    private sealed record LessonAccessInfo(bool IsFreePreview, bool IsFree, Guid CourseId);
+
+    private static async Task<LessonAccessInfo?> GetLessonAccessInfo(
+        Guid lessonId,
+        IDbConnectionFactory dbFactory,
+        IMemoryCache cache,
+        CancellationToken ct)
+    {
+        var cacheKey = $"video:access:{lessonId}";
+        if (cache.TryGetValue(cacheKey, out LessonAccessInfo? cached))
+            return cached;
+
+        using var conn = dbFactory.Create();
+        var row = await conn.QueryFirstOrDefaultAsync<LessonAccessRow>(
+            """
+            SELECT l."IsFreePreview" AS IsFreePreview,
+                   c."IsFree"        AS IsFree,
+                   c."Id"            AS CourseId
+            FROM "Lessons" l
+            JOIN "Modules" m ON m."Id" = l."ModuleId"
+            JOIN "Courses" c ON c."Id" = m."CourseId"
+            WHERE l."Id" = @lessonId
+            """,
+            new { lessonId });
+
+        var info = row is null ? null
+            : new LessonAccessInfo(row.IsFreePreview, row.IsFree, row.CourseId);
+
+        cache.Set(cacheKey, info, TimeSpan.FromMinutes(5));
+        return info;
+    }
+
+    private static async Task<bool> CheckVideoAccess(
+        LessonAccessInfo info,
+        ClaimsPrincipal user,
+        ISubscriptionRepository subscriptionRepo,
+        IEnrollmentRepository enrollmentRepo,
+        CancellationToken ct)
+    {
+        if (info.IsFreePreview) return true;
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return false;
+
+        if (user.IsInRole("Admin") || user.IsInRole("Instructor")) return true;
+
+        var sub = await subscriptionRepo.GetActiveByUserAsync(userId, ct);
+        if (sub?.GrantsAccess() == true) return true;
+
+        if (info.IsFree)
+            return await enrollmentRepo.ExistsAsync(userId, info.CourseId, ct);
+
+        return false;
+    }
+
+    private static string RewriteManifestUris(string content)
+    {
+        var lines = content.Split('\n');
+        return string.Join('\n', lines.Select(line =>
+        {
+            var trimmed = line.TrimEnd('\r');
+            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#'))
+                return line;
+            return "hls/" + trimmed;
+        }));
     }
 }

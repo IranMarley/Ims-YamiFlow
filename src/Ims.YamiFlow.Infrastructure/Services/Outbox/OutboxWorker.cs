@@ -44,8 +44,8 @@ public sealed class OutboxWorker(
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
-        // Outbox processing is a system operation — no user context, skip audit noise.
-        db.AuditDisabled = true;
+        // Outbox processing is a system operation — tag source so audit rows are identifiable.
+        db.ExtraFields["Source"] = "OutboxWorker";
 
         // Atomically claim a batch using SELECT FOR UPDATE SKIP LOCKED so concurrent
         // workers never process the same message.

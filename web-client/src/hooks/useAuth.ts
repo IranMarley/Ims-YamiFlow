@@ -13,7 +13,7 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-export function useLogin() {
+export function useLogin(redirectTo?: string) {
   const { setAuth } = useAuthStore()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -29,6 +29,10 @@ export function useLogin() {
       )
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['admin'] })
+      if (redirectTo) {
+        router.push(redirectTo)
+        return
+      }
       const role = response.role
       if (role === 'Instructor') {
         router.push('/instructor')
