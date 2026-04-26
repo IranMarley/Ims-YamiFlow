@@ -96,6 +96,8 @@ services:
       LOG_APP_LABEL: ${LOG_APP_LABEL}
       OTEL_SERVICE_NAME: ${LOG_APP_LABEL}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    volumes:
+      - ./video_data:/var/videos
     depends_on:
       postgres:
         condition: service_healthy
