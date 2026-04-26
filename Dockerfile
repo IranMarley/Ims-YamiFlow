@@ -31,15 +31,14 @@ COPY --from=ffmpeg-static /ffmpeg  /usr/bin/ffmpeg
 COPY --from=ffmpeg-static /ffprobe /usr/bin/ffprobe
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgssapi-krb5-2 musl \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 musl su-exec \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /var/videos \
-    && chown $APP_UID /var/videos
+    && mkdir -p /var/videos
 
-# Non-root user — built into .NET 10 base images
-USER $APP_UID
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "Ims.YamiFlow.API.dll"]
+ENTRYPOINT ["/entrypoint.sh"]
