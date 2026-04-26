@@ -31,7 +31,7 @@ COPY --from=ffmpeg-static /ffmpeg  /usr/bin/ffmpeg
 COPY --from=ffmpeg-static /ffprobe /usr/bin/ffprobe
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgssapi-krb5-2 musl su-exec \
+    && apt-get install -y --no-install-recommends libgssapi-krb5-2 musl gosu \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/videos
 
