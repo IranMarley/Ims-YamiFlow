@@ -220,7 +220,7 @@ export default function CourseDetailPage() {
 
   const isStudent = !user?.role || user.role === 'Student'
   const isAlreadyEnrolled = enrolledIds?.includes(id ?? '') ?? false
-  const hasActiveSubscription = subscription?.isActive ?? false
+  const hasActiveSubscription = subscription?.grantsAccess ?? false
 
   const [enrollError, setEnrollError] = useState<string | null>(null)
 

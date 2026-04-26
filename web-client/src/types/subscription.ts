@@ -31,6 +31,4 @@ export interface SubscriptionDetail {
   cancelAtPeriodEnd: boolean
   trialEnd: string | null
   grantsAccess: boolean
-  /** Alias for grantsAccess — convenience flag used by view components */
-  isActive: boolean
 }
