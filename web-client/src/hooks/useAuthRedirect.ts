@@ -13,7 +13,9 @@ export function useRedirectIfAuthenticated(redirectTo?: string) {
     if (redirectTo) {
       router.push(redirectTo)
     } else {
-      router.push(user?.role === 'Instructor' ? '/instructor' : '/dashboard')
+      if (user?.role === 'Admin') router.push('/admin')
+      else if (user?.role === 'Instructor') router.push('/instructor')
+      else router.push('/dashboard')
     }
   }, [isAuthenticated, redirectTo, router, user?.role])
 }
