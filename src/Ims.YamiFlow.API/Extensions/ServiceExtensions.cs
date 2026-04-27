@@ -142,9 +142,6 @@ public static class ServiceExtensions
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
         services.AddScoped<ICertificateRepository, CertificateRepository>();
-        services.AddScoped<ICouponRepository, CouponRepository>();
-        services.AddScoped<IReviewRepository, ReviewRepository>();
-        services.AddScoped<IForumPostRepository, ForumPostRepository>();
         services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();

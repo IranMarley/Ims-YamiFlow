@@ -15,6 +15,7 @@ public record UserItem(
     string Email,
     string FullName,
     bool IsActive,
+    bool EmailConfirmed,
     DateTime CreatedAt,
     IReadOnlyList<string> Roles
 );
@@ -26,6 +27,7 @@ file sealed class UserRow
     public string Email { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
     public bool IsActive { get; init; }
+    public bool EmailConfirmed { get; init; }
     public DateTime CreatedAt { get; init; }
     public string? RoleNames { get; init; }
 }
@@ -46,9 +48,9 @@ public class GetAdminStatsHandler(IDbConnectionFactory db)
                 (SELECT COUNT(*)::int FROM "Courses")        AS TotalCourses,
                 (SELECT COUNT(*)::int FROM "Enrollments")    AS TotalEnrollments,
                 COALESCE(
-                    (SELECT SUM(c."Price")
-                     FROM "Enrollments" e
-                     INNER JOIN "Courses" c ON c."Id" = e."CourseId"), 0
+                    (SELECT SUM(p."Amount")
+                     FROM "Payments" p
+                     WHERE p."Status" = 'Paid'), 0
                 )::numeric AS TotalRevenue
             """;
 
@@ -84,11 +86,12 @@ public class ListUsersHandler(IDbConnectionFactory db)
 
         var dataSql = """
             SELECT
-                u."Id"       AS UserId,
-                u."Email"    AS Email,
-                u."FullName" AS FullName,
-                u."IsActive" AS IsActive,
-                u."CreatedAt" AS CreatedAt,
+                u."Id"             AS UserId,
+                u."Email"          AS Email,
+                u."FullName"       AS FullName,
+                u."IsActive"       AS IsActive,
+                u."EmailConfirmed" AS EmailConfirmed,
+                u."CreatedAt"      AS CreatedAt,
                 STRING_AGG(r."Name", ',') AS RoleNames
             FROM "AspNetUsers" u
             LEFT JOIN "AspNetUserRoles" ur ON ur."UserId" = u."Id"
@@ -96,7 +99,7 @@ public class ListUsersHandler(IDbConnectionFactory db)
             WHERE @Search IS NULL
                OR u."Email"    ILIKE '%' || @Search || '%'
                OR u."FullName" ILIKE '%' || @Search || '%'
-            GROUP BY u."Id", u."Email", u."FullName", u."IsActive", u."CreatedAt"
+            GROUP BY u."Id", u."Email", u."FullName", u."IsActive", u."EmailConfirmed", u."CreatedAt"
             ORDER BY u."CreatedAt" DESC
             OFFSET @Offset LIMIT @PageSize
             """;
@@ -111,6 +114,7 @@ public class ListUsersHandler(IDbConnectionFactory db)
             r.Email,
             r.FullName,
             r.IsActive,
+            r.EmailConfirmed,
             r.CreatedAt,
             r.RoleNames?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? []
         )).ToList();

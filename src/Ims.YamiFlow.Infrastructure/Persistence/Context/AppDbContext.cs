@@ -29,10 +29,6 @@ public class AppDbContext : IdentityDbContext<AppUser, AppRole, string>, IAuditD
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<LessonProgress> LessonProgresses => Set<LessonProgress>();
     public DbSet<Certificate> Certificates => Set<Certificate>();
-    public DbSet<Coupon> Coupons => Set<Coupon>();
-    public DbSet<Review> Reviews => Set<Review>();
-    public DbSet<ForumPost> ForumPosts => Set<ForumPost>();
-    public DbSet<ForumReply> ForumReplies => Set<ForumReply>();
     public DbSet<RequestAudit> Audits => Set<RequestAudit>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<AuthEvent> AuthEvents => Set<AuthEvent>();

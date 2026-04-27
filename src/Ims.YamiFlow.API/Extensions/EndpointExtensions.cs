@@ -33,35 +33,17 @@ public static class EndpointExtensions
         // ── Certificates ──────────────────────────────
         CertificateEndpoints.Map(api);
 
-        // ── Reviews ───────────────────────────────────
-        ReviewEndpoints.Map(api);
-
-        // ── Quizzes ───────────────────────────────────
-        QuizEndpoints.Map(api);
-
-        // ── Coupons ───────────────────────────────────
-        CouponEndpoints.Map(api);
-
-        // ── Notifications ─────────────────────────────
-        NotificationEndpoints.Map(api);
-
         // ── Payments ──────────────────────────────────
         PaymentEndpoints.Map(api);
 
         // ── Admin ─────────────────────────────────────
         AdminEndpoints.Map(api);
 
-        // ── Forum ─────────────────────────────────────
-        ForumEndpoints.Map(api);
-
         // ── Instructor ────────────────────────────────
         InstructorEndpoints.Map(api);
 
         // ── Subscriptions ─────────────────────────────
         SubscriptionEndpoints.Map(api);
-
-        // ── Affiliates ────────────────────────────────
-        AffiliateEndpoints.Map(api);
 
         // ── Videos ────────────────────────────────────
         VideoEndpoints.Map(api);

@@ -1,0 +1,44 @@
+using FluentValidation;
+using Ims.YamiFlow.Domain.Interfaces.Repositories;
+
+namespace Ims.YamiFlow.Application.Commands.Admin;
+
+public record UpdateSubscriptionPlanCommand(
+    Guid PlanId,
+    string Name,
+    string Description,
+    decimal Amount,
+    int SortOrder
+);
+
+public class UpdateSubscriptionPlanValidator : AbstractValidator<UpdateSubscriptionPlanCommand>
+{
+    public UpdateSubscriptionPlanValidator()
+    {
+        RuleFor(x => x.PlanId).NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Description).MaximumLength(500);
+        RuleFor(x => x.Amount).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.SortOrder).GreaterThanOrEqualTo(0);
+    }
+}
+
+public class UpdateSubscriptionPlanHandler(
+    ISubscriptionPlanRepository planRepo,
+    IUnitOfWork uow)
+    : IHandler<UpdateSubscriptionPlanCommand, Result>
+{
+    public async Task<Result> Handle(UpdateSubscriptionPlanCommand cmd, CancellationToken ct)
+    {
+        var plan = await planRepo.GetByIdAsync(cmd.PlanId, ct);
+        if (plan is null)
+            return Result.Failure("Subscription plan not found.");
+
+        plan.UpdateDetails(cmd.Name, cmd.Description, cmd.SortOrder);
+        plan.UpdateAmount(cmd.Amount);
+        planRepo.Update(plan);
+        await uow.CommitAsync(ct);
+
+        return Result.Success();
+    }
+}

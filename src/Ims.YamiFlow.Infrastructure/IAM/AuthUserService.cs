@@ -114,4 +114,16 @@ public class AuthUserService(UserManager<AppUser> userManager) : IAuthUserServic
         var result = await userManager.UpdateAsync(user);
         return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
     }
+
+    public async Task<(bool Succeeded, string[] Errors)> ForceConfirmEmailAsync(
+        string userId, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return (false, ["User not found."]);
+
+        user.EmailConfirmed = true;
+        var result = await userManager.UpdateAsync(user);
+        return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
+    }
 }

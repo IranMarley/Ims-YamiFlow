@@ -87,17 +87,6 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm font-medium text-subtle">Password</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const emailValue = getValues('email')
-                    const href = emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : '/forgot-password'
-                    router.push(href)
-                  }}
-                  className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
-                >
-                  Forgot password?
-                </button>
               </div>
               <Input
                 type="password"
@@ -107,6 +96,19 @@ export default function LoginPage() {
                 registration={register('password')}
                 error={errors.password?.message}
               />
+              <div className="flex justify-end mt-1">
+                <button
+                    type="button"
+                    onClick={() => {
+                      const emailValue = getValues('email')
+                      const href = emailValue ? `/forgot-password?email=${encodeURIComponent(emailValue)}` : '/forgot-password'
+                      router.push(href)
+                    }}
+                    className="text-xs text-primary hover:text-primary-hover transition-colors cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
             </div>
 
             {serverError && (

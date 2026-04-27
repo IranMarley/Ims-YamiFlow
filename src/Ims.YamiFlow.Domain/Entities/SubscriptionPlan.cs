@@ -68,4 +68,11 @@ public class SubscriptionPlan
         Description = description;
         SortOrder = sortOrder;
     }
+
+    public void UpdateAmount(decimal amount)
+    {
+        if (amount < 0)
+            throw new DomainException("Amount cannot be negative.");
+        Amount = amount;
+    }
 }

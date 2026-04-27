@@ -66,6 +66,13 @@ public class Course
         Status = CourseStatus.Archived;
     }
 
+    public void AdminSetStatus(CourseStatus status)
+    {
+        Status = status;
+        if (status == CourseStatus.Published && PublishedAt is null)
+            PublishedAt = DateTime.UtcNow;
+    }
+
     public void Update(string title, string description, CourseLevel level, bool isFree)
     {
         if (string.IsNullOrWhiteSpace(title))
