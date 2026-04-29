@@ -23,6 +23,13 @@ public static class ProgramExtensions
             .AddSwaggerConfig()
             .AddHealthChecks();
 
+        builder.Services.AddHsts(options =>
+        {
+            options.Preload = true;
+            options.IncludeSubDomains = true;
+            options.MaxAge = TimeSpan.FromDays(365);
+        });
+
         builder.Services.AddOpenTelemetryConfig(builder.Configuration);
 
         return builder;
@@ -30,8 +37,11 @@ public static class ProgramExtensions
 
     public static WebApplication UseProgramPipeline(this WebApplication app)
     {
+        app.UseMiddleware<SecurityHeadersMiddleware>();
+
         if (!app.Environment.IsDevelopment())
         {
+            app.UseHsts();
             app.UseHttpsRedirection();
         }
         else
