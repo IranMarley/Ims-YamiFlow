@@ -109,6 +109,10 @@ export const adminService = {
     await api.post(`/api/admin/users/${userId}/confirm-email`)
   },
 
+  async revokeUserTokens(userId: string): Promise<void> {
+    await api.post(`/api/admin/users/${userId}/revoke-tokens`)
+  },
+
   async getSubscriptionPlans(): Promise<SubscriptionPlanAdminItem[]> {
     const response = await api.get<SubscriptionPlanAdminItem[]>('/api/admin/subscription-plans')
     return response.data

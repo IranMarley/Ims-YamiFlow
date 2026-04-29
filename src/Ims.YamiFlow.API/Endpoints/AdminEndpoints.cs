@@ -64,6 +64,17 @@ public static class AdminEndpoints
         .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Update))
         .WithName("AdminConfirmUserEmail");
 
+        group.MapPost("/users/{userId}/revoke-tokens", async (
+            string userId,
+            RevokeUserTokensHandler handler,
+            CancellationToken ct) =>
+        {
+            var result = await handler.Handle(new RevokeUserTokensCommand(userId), ct);
+            return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
+        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.User, Operations.Update))
+        .WithName("RevokeUserTokens");
+
         // ── Subscription Plans ────────────────────────────────────────────────
 
         group.MapGet("/subscription-plans", async (

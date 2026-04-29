@@ -82,6 +82,19 @@ export function useConfirmUserEmail() {
   })
 }
 
+export function useRevokeUserTokens() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, string>({
+    mutationFn: (userId: string) => adminService.revokeUserTokens(userId),
+    onError: (err) => toast.error((err as Error)?.message || 'Failed to revoke tokens'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      toast.success('User tokens revoked.')
+    },
+  })
+}
+
 export function useAdminSubscriptionPlans() {
   return useQuery<any[], Error>({
     queryKey: adminKeys.subscriptionPlans,

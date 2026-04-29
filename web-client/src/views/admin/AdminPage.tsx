@@ -14,6 +14,7 @@ import {
   useToggleUserStatus,
   useUpdateUser,
   useConfirmUserEmail,
+  useRevokeUserTokens,
   useAdminSubscriptionPlans,
   useUpdateSubscriptionPlan,
   useAdminInstructors,
@@ -257,6 +258,7 @@ function OverviewTab() {
   const { data: users, isLoading: loadingUsers } = useAdminUsers({ search: search || undefined, page, pageSize })
   const toggleStatusMutation = useToggleUserStatus()
   const confirmEmailMutation = useConfirmUserEmail()
+  const revokeTokensMutation = useRevokeUserTokens()
 
   const handleToggle = (userId: string, currentStatus: boolean) => {
     toggleStatusMutation.mutate({ userId, isActive: !currentStatus })
@@ -423,10 +425,26 @@ function OverviewTab() {
                             >
                               Confirm Email
                             </Button>
-                          )}
-                          <Button
+                            )}
+                            <Button
+                            size="sm"
+                            variant="secondary"
+                            loading={
+                              revokeTokensMutation.isPending &&
+                              (revokeTokensMutation.variables as string) === user.userId
+                            }
+                            onClick={() => {
+                              if (confirm('Are you sure you want to revoke all tokens for this user? They will be logged out.')) {
+                                revokeTokensMutation.mutate(user.userId)
+                              }
+                            }}
+                            >
+                            Revoke Tokens
+                            </Button>
+                            <Button
                             size="sm"
                             variant={user.isActive ? 'danger' : 'secondary'}
+
                             loading={
                               toggleStatusMutation.isPending &&
                               (toggleStatusMutation.variables as { userId: string })?.userId === user.userId
