@@ -18,4 +18,5 @@ public interface IAuthUserService
     Task<(bool Succeeded, string[] Errors)> ToggleActiveAsync(string userId, bool isActive, CancellationToken ct = default);
     Task<(bool Succeeded, string[] Errors)> UpdateProfileAsync(string userId, string fullName, CancellationToken ct = default);
     Task<(bool Succeeded, string[] Errors)> ForceConfirmEmailAsync(string userId, CancellationToken ct = default);
+    Task<(bool Succeeded, string[] Errors)> CreateExternalUserAsync(string email, string fullName, CancellationToken ct = default);
 }

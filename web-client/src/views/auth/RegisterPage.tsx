@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRegister } from '../../hooks/useAuth'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import GoogleLoginButton from '../../components/auth/GoogleLoginButton'
 import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
 
 const registerSchema = z
@@ -137,12 +138,25 @@ export default function RegisterPage() {
           )}
 
           {!registerMutation.isSuccess && (
-            <p className="mt-6 text-center text-sm text-subtle">
-              Already have an account?{' '}
-              <Link href="/login" className="text-primary hover:text-primary-hover font-medium transition-colors">
-                Sign in
-              </Link>
-            </p>
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-surface px-2 text-subtle">or continue with</span>
+                </div>
+              </div>
+
+              <GoogleLoginButton />
+
+              <p className="mt-6 text-center text-sm text-subtle">
+                Already have an account?{' '}
+                <Link href="/login" className="text-primary hover:text-primary-hover font-medium transition-colors">
+                  Sign in
+                </Link>
+              </p>
+            </>
           )}
         </div>
       </div>

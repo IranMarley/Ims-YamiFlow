@@ -94,6 +94,19 @@ public static class AuthEndpoints
         .AllowAnonymous()
         .WithName("ResendConfirmation");
 
+        group.MapPost("/google-login", async (GoogleLoginRequest req, HttpContext ctx, GoogleLoginHandler handler, CancellationToken ct) =>
+        {
+            var cmd = new GoogleLoginCommand(
+                req.IdToken,
+                ctx.Connection.RemoteIpAddress?.ToString(),
+                ctx.Request.Headers.UserAgent.ToString());
+
+            var result = await handler.Handle(cmd, ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
+        })
+        .AllowAnonymous()
+        .WithName("GoogleLogin");
+
         group.MapGet("/profile", async (ClaimsPrincipal user, IAuthUserService authUserService, CancellationToken ct) =>
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -123,3 +136,4 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record ConfirmEmailRequest(string Email, string Token);
 public record ResendConfirmationRequest(string Email);
 public record UpdateProfileRequest(string FullName);
+public record GoogleLoginRequest(string IdToken);

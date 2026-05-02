@@ -26,6 +26,20 @@ public class AuthUserService(UserManager<AppUser> userManager) : IAuthUserServic
         return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
     }
 
+    public async Task<(bool Succeeded, string[] Errors)> CreateExternalUserAsync(
+        string email, string fullName, CancellationToken ct = default)
+    {
+        var user = new AppUser
+        {
+            UserName = email,
+            Email = email,
+            FullName = fullName,
+            EmailConfirmed = true
+        };
+        var result = await userManager.CreateAsync(user);
+        return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
+    }
+
     public async Task<bool> CheckPasswordAsync(string email, string password, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);

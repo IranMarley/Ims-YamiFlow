@@ -3,7 +3,6 @@ using FluentValidation;
 using Ims.YamiFlow.Application.Commands.Auth;
 using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Infrastructure.Extensions;
-
 using Ims.YamiFlow.Infrastructure.IAM;
 using Ims.YamiFlow.Infrastructure.Persistence;
 using Ims.YamiFlow.Infrastructure.Persistence.Context;
@@ -14,7 +13,6 @@ using Ims.YamiFlow.Infrastructure.Services.Media;
 using Ims.YamiFlow.Infrastructure.Services.Outbox;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -131,6 +129,7 @@ public static class ServiceExtensions
 
         // Services (Application / Domain)
         services.AddScoped<IAuthUserService, AuthUserService>();
+        services.AddScoped<IGoogleTokenValidator, Ims.YamiFlow.Infrastructure.Services.GoogleTokenValidator>();
         services.AddScoped<IIamService, IamService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IEmailService, SmtpEmailService>();

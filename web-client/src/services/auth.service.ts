@@ -42,4 +42,9 @@ export const authService = {
   async resendConfirmation(email: string): Promise<void> {
     await api.post('/api/auth/resend-confirmation', { email })
   },
+
+  async googleLogin(idToken: string): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/api/auth/google-login', { idToken })
+    return response.data
+  },
 }

@@ -108,6 +108,37 @@ export function useResendConfirmation() {
   })
 }
 
+export function useGoogleAuth(redirectTo?: string) {
+  const { setAuth } = useAuthStore()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  return useMutation<AuthResponse, Error, string>({
+    mutationFn: (idToken: string) => authService.googleLogin(idToken),
+    onError: (err) => toast.error(extractErrorMessage(err, 'Google sign-in failed')),
+    onSuccess: (response) => {
+      queryClient.clear()
+      setAuth(
+        { userId: response.userId, email: response.email, fullName: response.fullName, role: response.role },
+        response.accessToken,
+        response.refreshToken,
+      )
+      if (redirectTo) {
+        router.push(redirectTo)
+        return
+      }
+      const role = response.role
+      if (role === 'Admin') {
+        router.push('/admin')
+      } else if (role === 'Instructor') {
+        router.push('/instructor')
+      } else {
+        router.push('/dashboard')
+      }
+    },
+  })
+}
+
 export function useLogout() {
   const { logout } = useAuthStore()
   const router = useRouter()
