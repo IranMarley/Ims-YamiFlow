@@ -16,18 +16,26 @@ public record PlanItem(
 
 public record ListPlansQuery;
 
-public class ListPlansHandler(ISubscriptionPlanRepository plans)
+public class ListPlansHandler(ISubscriptionPlanRepository plans, ICacheService cache)
     : IHandler<ListPlansQuery, Result<IReadOnlyList<PlanItem>>>
 {
     public async Task<Result<IReadOnlyList<PlanItem>>> Handle(
         ListPlansQuery q, CancellationToken ct)
     {
-        var items = await plans.ListActiveAsync(ct);
-        IReadOnlyList<PlanItem> mapped = items
-            .Select(p => new PlanItem(
-                p.Id, p.Name, p.Description, p.Amount, p.Currency,
-                p.Interval.ToString(), p.IntervalCount, p.TrialDays, p.StripePriceId))
-            .ToList();
-        return Result.Success(mapped);
+        var items = await cache.GetOrSetAsync<IReadOnlyList<PlanItem>>(
+            CacheKeys.PlansActive,
+            async ct =>
+            {
+                var active = await plans.ListActiveAsync(ct);
+                return (IReadOnlyList<PlanItem>)active
+                    .Select(p => new PlanItem(
+                        p.Id, p.Name, p.Description, p.Amount, p.Currency,
+                        p.Interval.ToString(), p.IntervalCount, p.TrialDays, p.StripePriceId))
+                    .ToList();
+            },
+            TimeSpan.FromHours(1),
+            ct);
+
+        return Result.Success(items!);
     }
 }

@@ -78,10 +78,23 @@ file sealed class LessonRow
 }
 
 // ── Handler ───────────────────────────────────────────
-public class GetCourseDetailHandler(IDbConnectionFactory db)
+public class GetCourseDetailHandler(IDbConnectionFactory db, ICacheService cache)
     : IHandler<GetCourseDetailQuery, Result<CourseDetailResponse>>
 {
     public async Task<Result<CourseDetailResponse>> Handle(GetCourseDetailQuery q, CancellationToken ct)
+    {
+        var response = await cache.GetOrSetAsync<CourseDetailResponse>(
+            CacheKeys.CourseDetail(q.CourseId),
+            ct => FetchAsync(q.CourseId, ct),
+            TimeSpan.FromMinutes(15),
+            ct);
+
+        return response is null
+            ? Result.Failure<CourseDetailResponse>("Course not found.")
+            : Result.Success(response);
+    }
+
+    private async Task<CourseDetailResponse?> FetchAsync(Guid courseId, CancellationToken ct)
     {
         using var conn = db.Create();
 
@@ -133,11 +146,11 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
 
         using var multi = await conn.QueryMultipleAsync(
             $"{courseSql}; {moduleSql}; {lessonSql}",
-            new { q.CourseId });
+            new { CourseId = courseId });
 
         var course = await multi.ReadFirstOrDefaultAsync<CourseRow>();
         if (course is null)
-            return Result.Failure<CourseDetailResponse>("Course not found.");
+            return null;
 
         var modules = (await multi.ReadAsync<ModuleRow>()).ToList();
         var lessons = (await multi.ReadAsync<LessonRow>()).ToList();
@@ -160,7 +173,7 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
             return new ModuleDetail(m.ModuleId, m.Title, m.Order, moduleLessons);
         }).ToList();
 
-        var response = new CourseDetailResponse(
+        return new CourseDetailResponse(
             course.CourseId,
             course.Title,
             course.Slug,
@@ -174,7 +187,5 @@ public class GetCourseDetailHandler(IDbConnectionFactory db)
             course.PublishedAt,
             course.EnrollmentCount,
             moduleDetails);
-
-        return Result.Success(response);
     }
 }

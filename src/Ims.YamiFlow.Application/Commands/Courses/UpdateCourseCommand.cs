@@ -25,7 +25,7 @@ public class UpdateCourseValidator : AbstractValidator<UpdateCourseCommand>
 }
 
 // ── Handler ───────────────────────────────────────────
-public class UpdateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
+public class UpdateCourseHandler(ICourseRepository courses, IUnitOfWork uow, ICacheService cache)
     : IHandler<UpdateCourseCommand, Result>
 {
     public async Task<Result> Handle(UpdateCourseCommand cmd, CancellationToken ct)
@@ -40,6 +40,8 @@ public class UpdateCourseHandler(ICourseRepository courses, IUnitOfWork uow)
         course.Update(cmd.Title, cmd.Description, cmd.Level, cmd.IsFree);
         await uow.CommitAsync(ct);
 
+        await cache.RemoveAsync(CacheKeys.CourseDetail(cmd.CourseId), ct);
+        await cache.RemoveByPrefixAsync(CacheKeys.CourseListPrefix, ct);
         return Result.Success();
     }
 }

@@ -27,10 +27,20 @@ public record CourseListItem(
 );
 
 // ── Handler ───────────────────────────────────────────
-public class ListCoursesHandler(IDbConnectionFactory db)
+public class ListCoursesHandler(IDbConnectionFactory db, ICacheService cache)
     : IHandler<ListCoursesQuery, PagedResult<CourseListItem>>
 {
     public async Task<PagedResult<CourseListItem>> Handle(ListCoursesQuery q, CancellationToken ct)
+    {
+        var key = CacheKeys.CourseList(q.Search, q.Level, q.IsFree, q.Page, q.PageSize);
+        return (await cache.GetOrSetAsync<PagedResult<CourseListItem>>(
+            key,
+            ct => FetchAsync(q, ct),
+            TimeSpan.FromMinutes(5),
+            ct))!;
+    }
+
+    private async Task<PagedResult<CourseListItem>?> FetchAsync(ListCoursesQuery q, CancellationToken ct)
     {
         using var conn = db.Create();
 

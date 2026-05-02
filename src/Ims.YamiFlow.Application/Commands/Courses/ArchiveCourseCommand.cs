@@ -5,7 +5,7 @@ namespace Ims.YamiFlow.Application.Commands.Courses;
 
 public record ArchiveCourseCommand(Guid CourseId, string InstructorId);
 
-public class ArchiveCourseHandler(ICourseRepository courses, IUnitOfWork uow)
+public class ArchiveCourseHandler(ICourseRepository courses, IUnitOfWork uow, ICacheService cache)
     : IHandler<ArchiveCourseCommand, Result>
 {
     public async Task<Result> Handle(ArchiveCourseCommand cmd, CancellationToken ct)
@@ -20,6 +20,8 @@ public class ArchiveCourseHandler(ICourseRepository courses, IUnitOfWork uow)
         course.Archive();
         await uow.CommitAsync(ct);
 
+        await cache.RemoveAsync(CacheKeys.CourseDetail(cmd.CourseId), ct);
+        await cache.RemoveByPrefixAsync(CacheKeys.CourseListPrefix, ct);
         return Result.Success();
     }
 }

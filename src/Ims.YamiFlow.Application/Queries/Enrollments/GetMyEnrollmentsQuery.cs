@@ -21,10 +21,20 @@ public record EnrollmentItem(
 );
 
 // ── Handler ───────────────────────────────────────────
-public class GetMyEnrollmentsHandler(IDbConnectionFactory db)
+public class GetMyEnrollmentsHandler(IDbConnectionFactory db, ICacheService cache)
     : IHandler<GetMyEnrollmentsQuery, PagedResult<EnrollmentItem>>
 {
     public async Task<PagedResult<EnrollmentItem>> Handle(GetMyEnrollmentsQuery q, CancellationToken ct)
+    {
+        var key = CacheKeys.UserEnrollments(q.StudentId, q.Page, q.PageSize);
+        return (await cache.GetOrSetAsync<PagedResult<EnrollmentItem>>(
+            key,
+            ct => FetchAsync(q, ct),
+            TimeSpan.FromMinutes(2),
+            ct))!;
+    }
+
+    private async Task<PagedResult<EnrollmentItem>?> FetchAsync(GetMyEnrollmentsQuery q, CancellationToken ct)
     {
         using var conn = db.Create();
 

@@ -2,6 +2,7 @@ using System.Text;
 using FluentValidation;
 using Ims.YamiFlow.Application.Commands.Auth;
 using Ims.YamiFlow.Application.Common;
+using Ims.YamiFlow.Infrastructure.Extensions;
 
 using Ims.YamiFlow.Infrastructure.IAM;
 using Ims.YamiFlow.Infrastructure.Persistence;
@@ -190,15 +191,7 @@ public static class ServiceExtensions
 
     public static IServiceCollection AddCacheServices(
         this IServiceCollection services, IConfiguration config)
-    {
-        var redis = config.GetConnectionString("Redis");
-
-        services.AddMemoryCache();
-        if (!string.IsNullOrEmpty(redis))
-            services.AddStackExchangeRedisCache(opt => opt.Configuration = redis);
-
-        return services;
-    }
+        => services.AddRedisCacheInfrastructure(config.GetConnectionString("Redis"));
 
     public static IServiceCollection AddRateLimitingConfig(this IServiceCollection services)
     {

@@ -21,30 +21,40 @@ public record GetCurrentSubscriptionQuery(string UserId);
 
 public class GetCurrentSubscriptionHandler(
     ISubscriptionRepository subscriptions,
-    ISubscriptionPlanRepository plans)
+    ISubscriptionPlanRepository plans,
+    ICacheService cache)
     : IHandler<GetCurrentSubscriptionQuery, Result<SubscriptionDetail?>>
 {
     public async Task<Result<SubscriptionDetail?>> Handle(
         GetCurrentSubscriptionQuery q, CancellationToken ct)
     {
-        var sub = await subscriptions.GetLatestByUserAsync(q.UserId, ct);
-        if (sub is null) return Result.Success<SubscriptionDetail?>(null);
+        // null is a valid cached value — user has no subscription
+        var detail = await cache.GetOrSetAsync<SubscriptionDetail>(
+            CacheKeys.UserSubscription(q.UserId),
+            async ct =>
+            {
+                var sub = await subscriptions.GetLatestByUserAsync(q.UserId, ct);
+                if (sub is null) return null;
 
-        var plan = await plans.GetByIdAsync(sub.PlanId, ct);
+                var plan = await plans.GetByIdAsync(sub.PlanId, ct);
 
-        var detail = new SubscriptionDetail(
-            sub.Id,
-            sub.PlanId,
-            plan?.Name ?? "Unknown",
-            plan?.Amount ?? 0,
-            plan?.Currency ?? "usd",
-            plan?.Interval.ToString() ?? string.Empty,
-            sub.Status.ToString(),
-            sub.CurrentPeriodStart,
-            sub.CurrentPeriodEnd,
-            sub.CancelAtPeriodEnd,
-            sub.TrialEnd,
-            sub.GrantsAccess());
+                return new SubscriptionDetail(
+                    sub.Id,
+                    sub.PlanId,
+                    plan?.Name ?? "Unknown",
+                    plan?.Amount ?? 0,
+                    plan?.Currency ?? "usd",
+                    plan?.Interval.ToString() ?? string.Empty,
+                    sub.Status.ToString(),
+                    sub.CurrentPeriodStart,
+                    sub.CurrentPeriodEnd,
+                    sub.CancelAtPeriodEnd,
+                    sub.TrialEnd,
+                    sub.GrantsAccess());
+            },
+            TimeSpan.FromMinutes(2),
+            ct);
+
         return Result.Success<SubscriptionDetail?>(detail);
     }
 }

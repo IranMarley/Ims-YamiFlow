@@ -46,7 +46,8 @@ public class EnrollHandler(
     IEnrollmentRepository enrollmentRepository,
     ISubscriptionRepository subscriptionRepository,
     IAuthUserService userService,
-    IUnitOfWork uow)
+    IUnitOfWork uow,
+    ICacheService cache)
     : IHandler<EnrollCommand, Result<EnrollResponse>>
 {
     public async Task<Result<EnrollResponse>> Handle(EnrollCommand cmd, CancellationToken ct)
@@ -77,6 +78,8 @@ public class EnrollHandler(
         var enrollment = Enrollment.Create(cmd.StudentId, cmd.CourseId);
         await enrollmentRepository.AddAsync(enrollment, ct);
         await uow.CommitAsync(ct);
+
+        await cache.RemoveByPrefixAsync(CacheKeys.UserEnrollmentsPrefix(cmd.StudentId), ct);
 
         return Result.Success(new EnrollResponse(
             EnrollmentId: enrollment.Id,

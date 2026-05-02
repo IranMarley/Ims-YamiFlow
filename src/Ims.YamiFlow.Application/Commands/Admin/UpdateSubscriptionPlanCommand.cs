@@ -25,7 +25,8 @@ public class UpdateSubscriptionPlanValidator : AbstractValidator<UpdateSubscript
 
 public class UpdateSubscriptionPlanHandler(
     ISubscriptionPlanRepository planRepo,
-    IUnitOfWork uow)
+    IUnitOfWork uow,
+    ICacheService cache)
     : IHandler<UpdateSubscriptionPlanCommand, Result>
 {
     public async Task<Result> Handle(UpdateSubscriptionPlanCommand cmd, CancellationToken ct)
@@ -39,6 +40,7 @@ public class UpdateSubscriptionPlanHandler(
         planRepo.Update(plan);
         await uow.CommitAsync(ct);
 
+        await cache.RemoveAsync(CacheKeys.PlansActive, ct);
         return Result.Success();
     }
 }

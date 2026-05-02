@@ -35,27 +35,35 @@ file sealed class UserRow
 // ── GetAdminStatsQuery ────────────────────────────────
 public record GetAdminStatsQuery;
 
-public class GetAdminStatsHandler(IDbConnectionFactory db)
+public class GetAdminStatsHandler(IDbConnectionFactory db, ICacheService cache)
     : IHandler<GetAdminStatsQuery, Result<AdminStatsResponse>>
 {
     public async Task<Result<AdminStatsResponse>> Handle(GetAdminStatsQuery q, CancellationToken ct)
     {
-        using var conn = db.Create();
+        var stats = await cache.GetOrSetAsync<AdminStatsResponse>(
+            CacheKeys.AdminStats,
+            async ct =>
+            {
+                using var conn = db.Create();
 
-        var sql = """
-            SELECT
-                (SELECT COUNT(*)::int FROM "AspNetUsers")    AS TotalUsers,
-                (SELECT COUNT(*)::int FROM "Courses")        AS TotalCourses,
-                (SELECT COUNT(*)::int FROM "Enrollments")    AS TotalEnrollments,
-                COALESCE(
-                    (SELECT SUM(p."Amount")
-                     FROM "Payments" p
-                     WHERE p."Status" = 'Paid'), 0
-                )::numeric AS TotalRevenue
-            """;
+                var sql = """
+                    SELECT
+                        (SELECT COUNT(*)::int FROM "AspNetUsers")    AS TotalUsers,
+                        (SELECT COUNT(*)::int FROM "Courses")        AS TotalCourses,
+                        (SELECT COUNT(*)::int FROM "Enrollments")    AS TotalEnrollments,
+                        COALESCE(
+                            (SELECT SUM(p."Amount")
+                             FROM "Payments" p
+                             WHERE p."Status" = 'Paid'), 0
+                        )::numeric AS TotalRevenue
+                    """;
 
-        var row = await conn.QueryFirstAsync<AdminStatsResponse>(sql);
-        return Result.Success(row);
+                return await conn.QueryFirstAsync<AdminStatsResponse>(sql);
+            },
+            TimeSpan.FromMinutes(5),
+            ct);
+
+        return Result.Success(stats!);
     }
 }
 
