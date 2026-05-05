@@ -1,3 +1,4 @@
+using Ims.YamiFlow.Domain.Exceptions;
 using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -86,12 +87,19 @@ public class StripeService : IStripeService
         if (trialDays.HasValue && trialDays.Value > 0)
             options.TrialPeriodDays = trialDays.Value;
 
-        var sub = await _subscriptions.CreateAsync(
-            options,
-            new RequestOptions { IdempotencyKey = idempotencyKey },
-            ct);
-
-        return Map(sub);
+        try
+        {
+            var sub = await _subscriptions.CreateAsync(
+                options,
+                new RequestOptions { IdempotencyKey = idempotencyKey },
+                ct);
+            return Map(sub);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error creating subscription. PriceId={PriceId} Code={Code}", priceId, ex.StripeError?.Code);
+            throw new PaymentException(ex.StripeError?.Message ?? ex.Message, ex.StripeError?.Code);
+        }
     }
 
     public async Task<StripeSubscriptionResult> CancelSubscriptionAsync(

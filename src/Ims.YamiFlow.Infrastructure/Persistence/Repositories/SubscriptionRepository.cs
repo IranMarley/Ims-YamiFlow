@@ -28,6 +28,14 @@ public class SubscriptionRepository(AppDbContext db) : ISubscriptionRepository
             .OrderByDescending(s => s.CreatedAt)
             .FirstOrDefaultAsync(ct);
 
+    public Task<Subscription?> GetIncompleteByUserAndPlanAsync(string userId, Guid planId, CancellationToken ct = default)
+        => db.Subscriptions
+            .Where(s => s.UserId == userId &&
+                        s.PlanId == planId &&
+                        s.Status == Domain.Enums.SubscriptionStatus.Incomplete)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
     public async Task AddAsync(Subscription subscription, CancellationToken ct = default)
         => await db.Subscriptions.AddAsync(subscription, ct);
 

@@ -39,6 +39,24 @@ function formatDate(iso: string | null | undefined) {
   })
 }
 
+function sanitizeError(e: unknown): string {
+  if (typeof e === 'string') return e
+  if (e instanceof Error) {
+    const msg = e.message
+    if (msg.includes('401') || msg.includes('403')) return 'Session expired. Please sign in again.'
+    if (msg.includes('500') || msg.includes('502') || msg.includes('503')) return 'A server error occurred. Please try again.'
+    if (msg.includes('Network') || msg.includes('fetch')) return 'Connection error. Check your internet and try again.'
+    return msg
+  }
+  if (typeof e === 'object' && e !== null) {
+    const obj = e as Record<string, unknown>
+    const data = obj?.response as Record<string, unknown> | undefined
+    const msg = data?.data ?? data?.message ?? obj?.message
+    if (typeof msg === 'string') return sanitizeError(msg)
+  }
+  return 'Something went wrong. Please try again.'
+}
+
 // ── Status badge ──────────────────────────────────────
 
 function StatusBadge({ status, cancelAtPeriodEnd }: { status: string; cancelAtPeriodEnd: boolean }) {
@@ -156,7 +174,6 @@ function SubscriptionCard({
 
   return (
     <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-10">
-      {/* Header */}
       <div className="px-6 py-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs text-subtle uppercase tracking-wide font-medium mb-1">Current Subscription</p>
@@ -173,7 +190,6 @@ function SubscriptionCard({
         </div>
       </div>
 
-      {/* Details grid */}
       <div className="px-6 py-5 grid grid-cols-2 sm:grid-cols-3 gap-5">
         <div>
           <p className="text-xs text-subtle mb-1">Billing period start</p>
@@ -195,7 +211,6 @@ function SubscriptionCard({
         )}
       </div>
 
-      {/* Cancel / Resume */}
       {current.grantsAccess && (
         <div className="px-6 py-4 border-t border-border bg-background/40 flex flex-wrap items-center justify-between gap-3">
           {current.cancelAtPeriodEnd ? (
@@ -229,53 +244,169 @@ interface CheckoutModalProps {
   clientSecret: string
   publishableKey: string
   planName: string
+  amount: number
+  currency: string
   onClose: () => void
   onSuccess: () => void
 }
 
-function CheckoutForm({ planName, onClose, onSuccess }: Omit<CheckoutModalProps, 'clientSecret' | 'publishableKey'>) {
+function CheckoutForm({
+  planName,
+  amount,
+  currency,
+  onClose,
+  onSuccess,
+}: Omit<CheckoutModalProps, 'clientSecret' | 'publishableKey'>) {
   const stripe = useStripe()
   const elements = useElements()
   const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [elementsReady, setElementsReady] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || !elementsReady) return
     setSubmitting(true)
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: { return_url: `${window.location.origin}/subscription/success` },
-      redirect: 'if_required',
-    })
-    setSubmitting(false)
-    if (error) { toast.error(error.message ?? 'Payment failed.'); return }
-    toast.success(`${planName} subscription activated!`)
-    onSuccess()
+    setErrorMsg(null)
+
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: `${window.location.origin}/subscription/success` },
+        redirect: 'if_required',
+      })
+
+      if (error) {
+        if (error.type === 'card_error' || error.type === 'validation_error') {
+          setErrorMsg(error.message ?? 'Payment declined. Please check your card details.')
+        } else {
+          setErrorMsg('Payment could not be processed. Please try again.')
+        }
+        return
+      }
+
+      toast.success(`${planName} subscription activated!`)
+      onSuccess()
+    } catch {
+      setErrorMsg('An unexpected error occurred. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <PaymentElement />
-      <div className="flex gap-3 justify-end">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</Button>
-        <Button type="submit" disabled={!stripe || submitting} loading={submitting}>Pay & subscribe</Button>
+      {/* Order summary */}
+      <div className="bg-background/60 border border-border rounded-xl px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-text">{planName}</p>
+          <p className="text-xs text-subtle mt-0.5">Recurring subscription</p>
+        </div>
+        <p className="text-base font-bold text-text">{formatPrice(amount, currency)}</p>
       </div>
+
+      {/* Payment element with loading skeleton */}
+      <div className="min-h-[120px]">
+        {!elementsReady && (
+          <div className="space-y-3 animate-pulse">
+            <div className="h-10 rounded-xl bg-border/40" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-10 rounded-xl bg-border/40" />
+              <div className="h-10 rounded-xl bg-border/40" />
+            </div>
+          </div>
+        )}
+        <div className={elementsReady ? '' : 'invisible h-0 overflow-hidden'}>
+          <PaymentElement onReady={() => setElementsReady(true)} />
+        </div>
+      </div>
+
+      {/* Error */}
+      {errorMsg && (
+        <div className="flex items-start gap-2.5 p-3 rounded-xl bg-danger/8 border border-danger/20">
+          <svg className="w-4 h-4 text-danger shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm text-danger">{errorMsg}</p>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-1">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={onClose}
+          disabled={submitting}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={!stripe || !elementsReady || submitting}
+          loading={submitting}
+          className="flex-1"
+        >
+          {submitting ? 'Processing…' : `Pay ${formatPrice(amount, currency)}`}
+        </Button>
+      </div>
+
+      <p className="text-center text-xs text-subtle flex items-center justify-center gap-1.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Secured by Stripe. Your card details are never stored.
+      </p>
     </form>
   )
 }
 
-function CheckoutModal({ clientSecret, publishableKey, planName, onClose, onSuccess }: CheckoutModalProps) {
+function CheckoutModal({ clientSecret, publishableKey, planName, amount, currency, onClose, onSuccess }: CheckoutModalProps) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey])
+
+  const appearance = {
+    theme: 'stripe' as const,
+    variables: {
+      borderRadius: '12px',
+      fontSizeBase: '14px',
+    },
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-lg bg-surface border border-border rounded-2xl p-6 shadow-xl">
-        <div className="mb-5">
-          <h2 className="text-lg font-bold text-text">Complete your subscription</h2>
-          <p className="text-subtle text-sm mt-0.5">{planName}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-text">Complete your subscription</h2>
+            <p className="text-xs text-subtle mt-0.5">Test mode — use card 4242 4242 4242 4242</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-subtle hover:text-text hover:bg-surface-hover transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
-          <CheckoutForm planName={planName} onClose={onClose} onSuccess={onSuccess} />
-        </Elements>
+
+        {/* Form */}
+        <div className="px-6 py-5">
+          <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
+            <CheckoutForm
+              planName={planName}
+              amount={amount}
+              currency={currency}
+              onClose={onClose}
+              onSuccess={onSuccess}
+            />
+          </Elements>
+        </div>
       </div>
     </div>
   )
@@ -339,7 +470,11 @@ function PlanCard({
           disabled={subscribing}
           loading={subscribing}
         >
-          {hasActive ? `Switch to ${plan.name}` : `Get ${plan.name}`}
+          {subscribing
+            ? 'Loading…'
+            : hasActive
+              ? `Switch to ${plan.name}`
+              : `Get ${plan.name}`}
         </Button>
       )}
     </div>
@@ -360,12 +495,16 @@ export default function SubscriptionsPage() {
     clientSecret: string
     publishableKey: string
     planName: string
+    amount: number
+    currency: string
   } | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null)
 
   const hasActive = !!(current?.grantsAccess)
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
+    setSubscribingPlanId(plan.id)
     try {
       const res = await subscribe.mutateAsync(plan.id)
       if (!res.clientSecret) {
@@ -374,13 +513,20 @@ export default function SubscriptionsPage() {
         return
       }
       if (!res.publishableKey) {
-        toast.error('Stripe is not configured on the server.')
+        toast.error('Payment is not configured. Please contact support.')
         return
       }
-      setCheckout({ clientSecret: res.clientSecret, publishableKey: res.publishableKey, planName: plan.name })
+      setCheckout({
+        clientSecret: res.clientSecret,
+        publishableKey: res.publishableKey,
+        planName: plan.name,
+        amount: plan.amount,
+        currency: plan.currency,
+      })
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: string } })?.response?.data ?? 'Failed to start subscription.'
-      toast.error(String(msg))
+      toast.error(sanitizeError(e))
+    } finally {
+      setSubscribingPlanId(null)
     }
   }
 
@@ -390,7 +536,7 @@ export default function SubscriptionsPage() {
       setShowCancelModal(false)
       toast.success('Subscription will cancel at the end of the billing period.')
     } catch {
-      toast.error('Failed to cancel subscription.')
+      toast.error('Failed to cancel subscription. Please try again.')
     }
   }
 
@@ -399,7 +545,7 @@ export default function SubscriptionsPage() {
       await resume.mutateAsync()
       toast.success('Subscription resumed successfully.')
     } catch {
-      toast.error('Failed to resume subscription.')
+      toast.error('Failed to resume subscription. Please try again.')
     }
   }
 
@@ -413,7 +559,10 @@ export default function SubscriptionsPage() {
         <CheckoutModal
           {...checkout}
           onClose={() => setCheckout(null)}
-          onSuccess={() => { setCheckout(null); router.push('/subscription/success') }}
+          onSuccess={() => {
+            setCheckout(null)
+            router.push('/subscription/success')
+          }}
         />
       )}
 
@@ -467,7 +616,7 @@ export default function SubscriptionsPage() {
                       isCurrent={current?.planId === plan.id && !!current.grantsAccess}
                       hasActive={hasActive}
                       onSubscribe={() => handleSubscribe(plan)}
-                      subscribing={subscribe.isPending}
+                      subscribing={subscribingPlanId === plan.id}
                     />
                   ))}
                 </div>

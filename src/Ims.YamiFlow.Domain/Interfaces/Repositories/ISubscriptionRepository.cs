@@ -8,6 +8,7 @@ public interface ISubscriptionRepository
     Task<Subscription?> GetByStripeSubscriptionIdAsync(string stripeSubscriptionId, CancellationToken ct = default);
     Task<Subscription?> GetActiveByUserAsync(string userId, CancellationToken ct = default);
     Task<Subscription?> GetLatestByUserAsync(string userId, CancellationToken ct = default);
+    Task<Subscription?> GetIncompleteByUserAndPlanAsync(string userId, Guid planId, CancellationToken ct = default);
     Task AddAsync(Subscription subscription, CancellationToken ct = default);
     void Update(Subscription subscription);
 }

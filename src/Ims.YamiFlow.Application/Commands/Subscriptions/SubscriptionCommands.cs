@@ -117,15 +117,61 @@ public class SubscribeHandler(
             cmd.UserId, user.Email, user.FullName, stripeCustomerId, ct);
         await customerService.SetStripeCustomerIdAsync(cmd.UserId, stripeCustomerId, ct);
 
-        // Idempotency: retrying SubscribeCommand with same user+plan should not create duplicate Stripe subs
-        var idempotencyKey = $"sub-{cmd.UserId}-{cmd.PlanId}";
+        // Check for stale incomplete subscription — cancel it so we get a fresh PaymentIntent.
+        // Stripe returns the same sub/PI via idempotency key even after PI reaches terminal state.
+        var staleIncomplete = await subscriptions.GetIncompleteByUserAndPlanAsync(cmd.UserId, cmd.PlanId, ct);
+        if (staleIncomplete is not null)
+        {
+            try
+            {
+                var stripeSub = await stripe.GetSubscriptionAsync(staleIncomplete.StripeSubscriptionId, ct);
+                var stripeStatus = stripeSub.Status;
+                bool piTerminal = stripeSub.ClientSecret is null;
 
-        var stripeResult = await stripe.CreateSubscriptionAsync(
-            stripeCustomerId, plan.StripePriceId, plan.TrialDays, idempotencyKey, ct);
+                if (stripeStatus is "incomplete_expired" or "canceled" || piTerminal)
+                {
+                    logger.LogInformation("Cancelling stale incomplete Stripe subscription {SubId} for user {UserId}",
+                        staleIncomplete.StripeSubscriptionId, cmd.UserId);
+                    if (stripeStatus is not "canceled" and not "incomplete_expired")
+                        await stripe.CancelSubscriptionAsync(staleIncomplete.StripeSubscriptionId, atPeriodEnd: false, ct);
+                    staleIncomplete.MarkCanceled();
+                    subscriptions.Update(staleIncomplete);
+                    await uow.CommitAsync(ct);
+                    staleIncomplete = null;
+                }
+            }
+            catch (Domain.Exceptions.PaymentException ex)
+            {
+                logger.LogWarning(ex, "Could not fetch stale Stripe subscription {SubId}, proceeding with fresh attempt.",
+                    staleIncomplete.StripeSubscriptionId);
+                staleIncomplete = null;
+            }
+        }
+
+        // Unique idempotency key per attempt — stale ones are cancelled above, new attempt uses fresh key.
+        var idempotencyKey = staleIncomplete is null
+            ? $"sub-{cmd.UserId}-{cmd.PlanId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 3600}"
+            : $"sub-{cmd.UserId}-{cmd.PlanId}";
+
+        StripeSubscriptionResult stripeResult;
+        try
+        {
+            stripeResult = await stripe.CreateSubscriptionAsync(
+                stripeCustomerId, plan.StripePriceId, plan.TrialDays, idempotencyKey, ct);
+        }
+        catch (Domain.Exceptions.PaymentException ex) when (ex.Code == "resource_missing")
+        {
+            logger.LogError(ex, "Stripe price {PriceId} not found for plan {PlanId}", plan.StripePriceId, plan.Id);
+            return Result.Failure<SubscribeResponse>("Stripe price configuration is invalid. Contact support.");
+        }
+        catch (Domain.Exceptions.PaymentException ex)
+        {
+            logger.LogError(ex, "Stripe error creating subscription for user {UserId}", cmd.UserId);
+            return Result.Failure<SubscribeResponse>($"Payment provider error: {ex.Message}");
+        }
 
         var status = MapStatus(stripeResult.Status);
 
-        // If an Incomplete record for this Stripe sub already exists, reuse it instead of inserting duplicate
         var existingLocal = await subscriptions.GetByStripeSubscriptionIdAsync(stripeResult.SubscriptionId, ct);
         if (existingLocal is null)
         {
