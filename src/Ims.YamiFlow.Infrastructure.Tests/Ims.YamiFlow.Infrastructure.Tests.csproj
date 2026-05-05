@@ -16,6 +16,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Ims.YamiFlow.API\Ims.YamiFlow.API.csproj" />
+    <ProjectReference Include="..\Ims.YamiFlow.Infrastructure\Ims.YamiFlow.Infrastructure.csproj" />
+    <ProjectReference Include="..\Ims.YamiFlow.API\Ims.YamiFlow.API.csproj" />
   </ItemGroup>
 </Project>
