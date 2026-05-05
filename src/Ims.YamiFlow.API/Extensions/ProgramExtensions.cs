@@ -18,6 +18,7 @@ public static class ProgramExtensions
             .AddMediaServices(builder.Configuration)
             .AddStripeIntegration(builder.Configuration)
             .AddCacheServices(builder.Configuration)
+            .AddWebhookServices(builder.Configuration)
             .AddRateLimitingConfig()
             .AddCorsConfig(builder.Configuration)
             .AddSwaggerConfig()

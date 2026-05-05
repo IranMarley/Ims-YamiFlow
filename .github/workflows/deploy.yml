@@ -56,6 +56,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=https://api.yamiflow.es
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
             NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID=${{ secrets.STRIPE_PLAN_MONTHLY_ID }}
             NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID=${{ secrets.STRIPE_PLAN_ANNUAL_ID }}
           progress: plain

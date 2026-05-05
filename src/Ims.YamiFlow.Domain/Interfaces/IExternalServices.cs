@@ -47,3 +47,12 @@ public interface IOutboxService
 {
     Task EnqueueAsync(string type, object payload, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Sends event notifications to external webhook endpoints.
+/// Calls are protected by a Polly circuit breaker — returns false when circuit is open.
+/// </summary>
+public interface IExternalWebhookService
+{
+    Task<bool> NotifyAsync(string eventType, object payload, CancellationToken ct = default);
+}

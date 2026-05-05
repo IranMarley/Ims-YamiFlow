@@ -82,6 +82,7 @@ services:
       Email__SmtpUser: ${SMTP_USER}
       Email__SmtpPass: ${SMTP_PASS}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY}
+      Stripe__PublishableKey: ${STRIPE_PUBLISHABLE_KEY}
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
       Stripe__PlanMonthlyId: ${STRIPE_PLAN_MONTHLY_ID}
       Stripe__PlanAnnualId: ${STRIPE_PLAN_ANNUAL_ID}
@@ -113,6 +114,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: https://api.yamiflow.es
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
       NEXT_PUBLIC_STRIPE_PLAN_MONTHLY_ID: ${STRIPE_PLAN_MONTHLY_ID}
       NEXT_PUBLIC_STRIPE_PLAN_ANNUAL_ID: ${STRIPE_PLAN_ANNUAL_ID}
     depends_on:

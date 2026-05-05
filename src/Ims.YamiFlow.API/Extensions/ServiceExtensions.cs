@@ -11,6 +11,7 @@ using Ims.YamiFlow.Infrastructure.Services;
 using Ims.YamiFlow.Infrastructure.Services.Email;
 using Ims.YamiFlow.Infrastructure.Services.Media;
 using Ims.YamiFlow.Infrastructure.Services.Outbox;
+using Ims.YamiFlow.Infrastructure.Services.Webhooks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -319,6 +320,27 @@ public static class ServiceExtensions
                 }
             });
         });
+
+        return services;
+    }
+
+    public static IServiceCollection AddWebhookServices(
+        this IServiceCollection services,
+        IConfiguration config)
+    {
+        services.Configure<WebhookOptions>(config.GetSection(WebhookOptions.SectionName));
+
+        services
+            .AddHttpClient(ExternalWebhookService.ClientName, (sp, client) =>
+            {
+                var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WebhookOptions>>().Value;
+                if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+                    client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = Timeout.InfiniteTimeSpan; // Polly timeout manages this
+            })
+            .AddResiliencePolicies(ExternalWebhookService.ClientName);
+
+        services.AddScoped<Ims.YamiFlow.Domain.Interfaces.IExternalWebhookService, ExternalWebhookService>();
 
         return services;
     }
