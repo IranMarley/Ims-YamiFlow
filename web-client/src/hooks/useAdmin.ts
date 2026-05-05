@@ -108,7 +108,7 @@ export function useUpdateSubscriptionPlan() {
   return useMutation<
     void,
     Error,
-    { planId: string; name: string; description: string; amount: number; sortOrder: number }
+    { planId: string; name: string; description: string; amount: number; sortOrder: number; stripeProductId?: string; stripePriceId?: string }
   >({
     mutationFn: ({ planId, ...data }) => adminService.updateSubscriptionPlan(planId, data),
     onError: (err) => toast.error((err as Error)?.message || 'Failed to update plan'),

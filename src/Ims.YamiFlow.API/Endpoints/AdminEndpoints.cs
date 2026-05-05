@@ -94,7 +94,7 @@ public static class AdminEndpoints
             CancellationToken ct) =>
         {
             var result = await handler.Handle(
-                new UpdateSubscriptionPlanCommand(planId, req.Name, req.Description, req.Amount, req.SortOrder), ct);
+                new UpdateSubscriptionPlanCommand(planId, req.Name, req.Description, req.Amount, req.SortOrder, req.StripeProductId, req.StripePriceId), ct);
             return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Subscription, Operations.Update))
@@ -182,6 +182,6 @@ public static class AdminEndpoints
 
 public record UpdateUserRequest(string FullName, string Role);
 public record ToggleUserStatusRequest(bool IsActive);
-public record UpdateSubscriptionPlanRequest(string Name, string Description, decimal Amount, int SortOrder);
+public record UpdateSubscriptionPlanRequest(string Name, string Description, decimal Amount, int SortOrder, string? StripeProductId, string? StripePriceId);
 public record CreateUserByAdminRequest(string Email, string FullName, string Password, string Role);
 public record SetCourseStatusRequest(CourseStatus Status);

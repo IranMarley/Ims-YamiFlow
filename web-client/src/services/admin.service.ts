@@ -31,6 +31,7 @@ export interface SubscriptionPlanAdminItem {
   id: string
   name: string
   description: string
+  stripeProductId: string
   stripePriceId: string
   amount: number
   currency: string
@@ -120,7 +121,7 @@ export const adminService = {
 
   async updateSubscriptionPlan(
     planId: string,
-    data: { name: string; description: string; amount: number; sortOrder: number }
+    data: { name: string; description: string; amount: number; sortOrder: number; stripeProductId?: string; stripePriceId?: string }
   ): Promise<void> {
     await api.put(`/api/admin/subscription-plans/${planId}`, data)
   },

@@ -794,6 +794,8 @@ function SubscriptionsTab() {
         description: editingPlan.description,
         amount: Number(editingPlan.amount),
         sortOrder: Number(editingPlan.sortOrder),
+        stripeProductId: editingPlan.stripeProductId || undefined,
+        stripePriceId: editingPlan.stripePriceId || undefined,
       },
       { onSuccess: () => setEditingPlan(null) },
     )
@@ -904,6 +906,31 @@ function SubscriptionsTab() {
                   onChange={(e) => setEditingPlan({ ...editingPlan, sortOrder: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
+              </div>
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-subtle mb-3">Stripe IDs (opcional — atualiza apenas se preenchido)</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1.5">Stripe Product ID</label>
+                    <input
+                      suppressHydrationWarning
+                      value={editingPlan.stripeProductId ?? ''}
+                      placeholder="prod_..."
+                      onChange={(e) => setEditingPlan({ ...editingPlan, stripeProductId: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text mb-1.5">Stripe Price ID</label>
+                    <input
+                      suppressHydrationWarning
+                      value={editingPlan.stripePriceId ?? ''}
+                      placeholder="price_..."
+                      onChange={(e) => setEditingPlan({ ...editingPlan, stripePriceId: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-text text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

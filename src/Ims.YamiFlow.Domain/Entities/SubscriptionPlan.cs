@@ -75,4 +75,12 @@ public class SubscriptionPlan
             throw new DomainException("Amount cannot be negative.");
         Amount = amount;
     }
+
+    public void UpdateStripeIds(string stripeProductId, string stripePriceId)
+    {
+        if (string.IsNullOrWhiteSpace(stripePriceId))
+            throw new DomainException("Stripe price id is required.");
+        StripeProductId = stripeProductId;
+        StripePriceId = stripePriceId;
+    }
 }

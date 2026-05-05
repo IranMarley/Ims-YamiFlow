@@ -8,7 +8,9 @@ public record UpdateSubscriptionPlanCommand(
     string Name,
     string Description,
     decimal Amount,
-    int SortOrder
+    int SortOrder,
+    string? StripeProductId,
+    string? StripePriceId
 );
 
 public class UpdateSubscriptionPlanValidator : AbstractValidator<UpdateSubscriptionPlanCommand>
@@ -20,6 +22,9 @@ public class UpdateSubscriptionPlanValidator : AbstractValidator<UpdateSubscript
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.Amount).GreaterThanOrEqualTo(0);
         RuleFor(x => x.SortOrder).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.StripePriceId)
+            .NotEmpty().WithMessage("StripePriceId is required when StripeProductId is provided.")
+            .When(x => !string.IsNullOrWhiteSpace(x.StripeProductId));
     }
 }
 
@@ -37,6 +42,10 @@ public class UpdateSubscriptionPlanHandler(
 
         plan.UpdateDetails(cmd.Name, cmd.Description, cmd.SortOrder);
         plan.UpdateAmount(cmd.Amount);
+
+        if (!string.IsNullOrWhiteSpace(cmd.StripePriceId))
+            plan.UpdateStripeIds(cmd.StripeProductId ?? string.Empty, cmd.StripePriceId);
+
         planRepo.Update(plan);
         await uow.CommitAsync(ct);
 
