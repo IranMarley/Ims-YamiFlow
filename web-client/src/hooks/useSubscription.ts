@@ -54,3 +54,13 @@ export function useResumeSubscription() {
     },
   })
 }
+
+export function useSyncSubscription() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => subscriptionService.sync(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+    },
+  })
+}

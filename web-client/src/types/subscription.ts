@@ -18,6 +18,11 @@ export interface SubscribeResponse {
   publishableKey: string | null
 }
 
+export interface SyncSubscriptionResponse {
+  status: string
+  grantsAccess: boolean
+}
+
 export interface SubscriptionDetail {
   subscriptionId: string
   planId: string

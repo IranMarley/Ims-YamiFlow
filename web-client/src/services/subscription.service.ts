@@ -3,6 +3,7 @@ import type {
   SubscriptionPlan,
   SubscribeResponse,
   SubscriptionDetail,
+  SyncSubscriptionResponse,
 } from '../types/subscription'
 
 export const subscriptionService = {
@@ -27,5 +28,10 @@ export const subscriptionService = {
 
   async resume(): Promise<void> {
     await api.post('/api/subscriptions/resume')
+  },
+
+  async sync(): Promise<SyncSubscriptionResponse> {
+    const { data } = await api.post<SyncSubscriptionResponse>('/api/subscriptions/sync')
+    return data
   },
 }

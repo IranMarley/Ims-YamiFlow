@@ -74,6 +74,17 @@ public static class SubscriptionEndpoints
         .RequireAuthorization(x => x.RequireClaim(Resources.Subscription, Operations.Update))
         .WithName("ResumeSubscription");
 
+        // Called by the frontend after Stripe payment confirmation to sync subscription status
+        // without waiting for the webhook — avoids race condition on the success page.
+        group.MapPost("/sync", async (SyncSubscriptionHandler handler, ClaimsPrincipal user, CancellationToken ct) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var result = await handler.Handle(new SyncSubscriptionCommand(userId), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
+        })
+        .RequireAuthorization()
+        .WithName("SyncSubscription");
+
         group.MapPost("/checkout", async (
             CheckoutRequest req,
             InitiateCheckoutHandler handler,

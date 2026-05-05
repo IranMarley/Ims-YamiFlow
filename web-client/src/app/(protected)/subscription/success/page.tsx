@@ -1,17 +1,58 @@
 'use client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import Spinner from '../../../../components/ui/Spinner'
+import { subscriptionService } from '../../../../services/subscription.service'
 import { subscriptionKeys } from '../../../../hooks/useSubscription'
 
+const MAX_POLLS = 15   // 15 × 2s = 30s max wait
+const POLL_MS   = 2000
+
 export default function SubscriptionSuccessPage() {
-  const router = useRouter()
   const queryClient = useQueryClient()
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+    let cancelled = false
+
+    async function pollUntilActive() {
+      for (let i = 0; i < MAX_POLLS; i++) {
+        await new Promise((r) => setTimeout(r, i === 0 ? 500 : POLL_MS))
+        if (cancelled) return
+
+        try {
+          const result = await subscriptionService.sync()
+          if (result.grantsAccess) {
+            queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+            if (!cancelled) setReady(true)
+            return
+          }
+        } catch {
+          // sync failed — keep polling
+        }
+      }
+
+      // Timed out — payment went through but webhook is slow; show success anyway
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+      if (!cancelled) setReady(true)
+    }
+
+    pollUntilActive()
+    return () => { cancelled = true }
   }, [queryClient])
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="max-w-sm w-full text-center">
+          <Spinner size="lg" className="mx-auto mb-6" />
+          <h1 className="text-xl font-bold text-text mb-2">Activating your subscription…</h1>
+          <p className="text-sm text-subtle">Confirming payment with Stripe. This takes just a moment.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -24,7 +65,7 @@ export default function SubscriptionSuccessPage() {
 
         <h1 className="text-2xl font-bold text-text mb-2">Subscription Active!</h1>
         <p className="text-subtle mb-8">
-          Welcome to Pro. You now have unlimited access to all premium courses.
+          You now have unlimited access to all premium courses.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
