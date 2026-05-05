@@ -38,5 +38,12 @@ public interface IStripeService
         string newPriceId,
         CancellationToken ct = default);
 
+    Task<CheckoutSessionResult> CreateCheckoutSessionAsync(
+        string customerId,
+        string priceId,
+        string? successUrl,
+        string? cancelUrl,
+        CancellationToken ct = default);
+
     string PublishableKey { get; }
 }

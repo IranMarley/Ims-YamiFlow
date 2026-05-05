@@ -6,6 +6,7 @@ using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
+using Stripe.Checkout;
 using DomainSubscription = Ims.YamiFlow.Domain.Entities.Subscription;
 using StripeSubscription = Stripe.Subscription;
 
@@ -89,6 +90,10 @@ public class StripeWebhookProcessor(
 
             case "invoice.payment_failed":
                 await HandleInvoiceFailedAsync((Invoice)evt.Data.Object, ct);
+                break;
+
+            case "checkout.session.completed":
+                await HandleCheckoutSessionCompletedAsync((Session)evt.Data.Object, ct);
                 break;
 
             default:
@@ -222,6 +227,24 @@ public class StripeWebhookProcessor(
             if (sub is not null) return sub.UserId;
         }
         return null;
+    }
+
+    private async Task HandleCheckoutSessionCompletedAsync(Session session, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(session.SubscriptionId))
+        {
+            logger.LogWarning("Checkout session {SessionId} completed but no subscription attached.", session.Id);
+            return;
+        }
+
+        var sub = await subscriptions.GetByStripeSubscriptionIdAsync(session.SubscriptionId, ct);
+        if (sub is null)
+        {
+            logger.LogWarning("Stripe subscription {SubId} from checkout not found locally.", session.SubscriptionId);
+            return;
+        }
+
+        logger.LogInformation("Checkout session {SessionId} completed for subscription {SubId}", session.Id, session.SubscriptionId);
     }
 
     private static SubscriptionStatus MapStatus(string s) => s switch

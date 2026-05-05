@@ -2,6 +2,7 @@ using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
+using Stripe.Checkout;
 
 namespace Ims.YamiFlow.Infrastructure.Services.Stripe;
 
@@ -15,6 +16,7 @@ public class StripeService : IStripeService
     private readonly ILogger<StripeService> _logger;
     private readonly CustomerService _customers;
     private readonly SubscriptionService _subscriptions;
+    private readonly SessionService _sessions;
 
     public StripeService(IOptions<StripeOptions> options, ILogger<StripeService> logger)
     {
@@ -28,6 +30,7 @@ public class StripeService : IStripeService
 
         _customers = new CustomerService();
         _subscriptions = new SubscriptionService();
+        _sessions = new SessionService();
     }
 
     public async Task<string> CreateOrGetCustomerAsync(
@@ -151,6 +154,27 @@ public class StripeService : IStripeService
             cancellationToken: ct);
 
         return Map(updated);
+    }
+
+    public async Task<CheckoutSessionResult> CreateCheckoutSessionAsync(
+        string customerId,
+        string priceId,
+        string? successUrl,
+        string? cancelUrl,
+        CancellationToken ct = default)
+    {
+        var options = new SessionCreateOptions
+        {
+            Customer = customerId,
+            PaymentMethodTypes = ["card"],
+            Mode = "subscription",
+            LineItems = [new SessionLineItemOptions { Price = priceId, Quantity = 1 }],
+            SuccessUrl = successUrl,
+            CancelUrl = cancelUrl
+        };
+
+        var session = await _sessions.CreateAsync(options, cancellationToken: ct);
+        return new CheckoutSessionResult(session.Id, session.Url);
     }
 
     public string PublishableKey => _options.PublishableKey;

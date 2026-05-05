@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Ims.YamiFlow.Application.Commands.Subscriptions;
 using Ims.YamiFlow.Application.IAM.Constants;
 using Ims.YamiFlow.Application.Queries.Subscriptions;
-
 using Ims.YamiFlow.Domain.Interfaces.Services;
 
 namespace Ims.YamiFlow.API.Endpoints;
@@ -74,8 +73,23 @@ public static class SubscriptionEndpoints
         })
         .RequireAuthorization(x => x.RequireClaim(Resources.Subscription, Operations.Update))
         .WithName("ResumeSubscription");
+
+        group.MapPost("/checkout", async (
+            CheckoutRequest req,
+            InitiateCheckoutHandler handler,
+            ClaimsPrincipal user,
+            CancellationToken ct) =>
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var result = await handler.Handle(
+                new InitiateCheckoutCommand(userId, req.PlanId, req.SuccessUrl, req.CancelUrl), ct);
+            return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
+        })
+        .RequireAuthorization(x => x.RequireClaim(Resources.Subscription, Operations.Create))
+        .WithName("InitiateCheckout");
     }
 }
 
 public record SubscribeRequest(Guid PlanId);
+public record CheckoutRequest(Guid PlanId, string SuccessUrl, string CancelUrl);
 public record CancelRequest(bool AtPeriodEnd = true);
