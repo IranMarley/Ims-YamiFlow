@@ -6,8 +6,8 @@ import Spinner from '../../../../components/ui/Spinner'
 import { subscriptionService } from '../../../../services/subscription.service'
 import { subscriptionKeys } from '../../../../hooks/useSubscription'
 
-const MAX_POLLS = 15   // 15 × 2s = 30s max wait
-const POLL_MS   = 2000
+const MAX_POLLS = 20   // up to ~20s max wait
+const POLL_MS   = 1000 // 1s interval — Stripe usually flips within 2-3s
 
 export default function SubscriptionSuccessPage() {
   const queryClient = useQueryClient()
@@ -18,13 +18,15 @@ export default function SubscriptionSuccessPage() {
 
     async function pollUntilActive() {
       for (let i = 0; i < MAX_POLLS; i++) {
-        await new Promise((r) => setTimeout(r, i === 0 ? 500 : POLL_MS))
+        await new Promise((r) => setTimeout(r, POLL_MS))
         if (cancelled) return
 
         try {
           const result = await subscriptionService.sync()
           if (result.grantsAccess) {
-            queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+            // Use refetchQueries (awaits) so the cache is warm with Active data before the
+            // user navigates away — prevents stale Incomplete data flashing on course pages.
+            await queryClient.refetchQueries({ queryKey: subscriptionKeys.current })
             if (!cancelled) setReady(true)
             return
           }
@@ -34,7 +36,7 @@ export default function SubscriptionSuccessPage() {
       }
 
       // Timed out — payment went through but webhook is slow; show success anyway
-      queryClient.invalidateQueries({ queryKey: subscriptionKeys.current })
+      await queryClient.refetchQueries({ queryKey: subscriptionKeys.current })
       if (!cancelled) setReady(true)
     }
 

@@ -216,11 +216,12 @@ export default function CourseDetailPage() {
   const { user } = useAuthStore()
   const enrollMutation = useEnroll()
   const { data: enrolledIds } = useMyEnrolledCourseIds()
-  const { data: subscription } = useSubscription()
+  const { data: subscription, isLoading: subscriptionLoading } = useSubscription()
 
   const isStudent = !user?.role || user.role === 'Student'
   const isAlreadyEnrolled = enrolledIds?.includes(id ?? '') ?? false
-  const hasActiveSubscription = subscription?.grantsAccess ?? false
+  // Treat subscription as pending while loading — prevents "Subscribe" flash during refetch
+  const hasActiveSubscription = subscriptionLoading ? null : (subscription?.grantsAccess ?? false)
 
   const [enrollError, setEnrollError] = useState<string | null>(null)
 
@@ -269,8 +270,8 @@ export default function CourseDetailPage() {
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0)
   const isFree = course.isFree
 
-  // Access logic
-  const canAccessNow = isFree || hasActiveSubscription || isAlreadyEnrolled
+  // Access logic (null = subscription still loading → treat same as false for display, button shows Loading)
+  const canAccessNow = isFree || hasActiveSubscription === true || isAlreadyEnrolled
 
   return (
     <div className="min-h-screen bg-background">
@@ -411,6 +412,11 @@ export default function CourseDetailPage() {
                       Start Learning
                     </Button>
                   </>
+                ) : hasActiveSubscription === null ? (
+                  /* Subscription check still loading — show neutral state */
+                  <Button fullWidth size="lg" disabled loading>
+                    Loading…
+                  </Button>
                 ) : (
                   /* No subscription — prompt to subscribe */
                   <div className="space-y-3">
