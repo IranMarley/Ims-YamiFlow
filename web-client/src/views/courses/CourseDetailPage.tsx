@@ -270,8 +270,9 @@ export default function CourseDetailPage() {
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0)
   const isFree = course.isFree
 
-  // Access logic (null = subscription still loading → treat same as false for display, button shows Loading)
-  const canAccessNow = isFree || hasActiveSubscription === true || isAlreadyEnrolled
+  // Access logic: subscription gates paid courses regardless of enrollment status.
+  // Enrollment is kept for progress tracking only — does not grant access without active sub.
+  const canAccessNow = isFree || hasActiveSubscription === true
 
   return (
     <div className="min-h-screen bg-background">
@@ -371,7 +372,7 @@ export default function CourseDetailPage() {
                     </p>
                   </div>
                 ) : canAccessNow && (isAlreadyEnrolled || enrollMutation.isSuccess) ? (
-                  /* Already enrolled */
+                  /* Enrolled + active subscription */
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 rounded-xl bg-success/10 border border-success/20 px-4 py-3">
                       <svg className="w-5 h-5 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -401,7 +402,7 @@ export default function CourseDetailPage() {
                     </Button>
                   </>
                 ) : hasActiveSubscription ? (
-                  /* Has subscription → enroll now */
+                  /* Active subscription, not yet enrolled → enroll now */
                   <>
                     {enrollError && (
                       <div className="rounded-xl bg-danger/10 border border-danger/20 px-3 py-2.5 text-xs text-danger">
@@ -409,16 +410,33 @@ export default function CourseDetailPage() {
                       </div>
                     )}
                     <Button fullWidth size="lg" loading={enrollMutation.isPending} onClick={handleEnroll}>
-                      Start Learning
+                      {isAlreadyEnrolled ? 'Continue Learning' : 'Start Learning'}
                     </Button>
                   </>
                 ) : hasActiveSubscription === null ? (
-                  /* Subscription check still loading — show neutral state */
+                  /* Subscription check still loading */
                   <Button fullWidth size="lg" disabled loading>
                     Loading…
                   </Button>
+                ) : isAlreadyEnrolled ? (
+                  /* Was enrolled but subscription expired/canceled */
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+                      <svg className="w-5 h-5 text-warning shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-warning">Subscription required</p>
+                        <p className="text-xs text-subtle">Your progress is saved. Reactivate to continue.</p>
+                      </div>
+                    </div>
+                    <Button fullWidth size="lg" onClick={() => router.push('/subscriptions')}>
+                      Reactivate Subscription
+                    </Button>
+                  </div>
                 ) : (
-                  /* No subscription — prompt to subscribe */
+                  /* No subscription, not enrolled */
                   <div className="space-y-3">
                     <Button fullWidth size="lg" onClick={() => router.push('/subscriptions')}>
                       Subscribe to Access

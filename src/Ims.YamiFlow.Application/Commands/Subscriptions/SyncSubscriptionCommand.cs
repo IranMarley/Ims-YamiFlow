@@ -1,3 +1,4 @@
+using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
@@ -9,12 +10,14 @@ public record SyncSubscriptionCommand(string UserId);
 public record SyncSubscriptionResponse(string Status, bool GrantsAccess);
 
 /// <summary>
-/// Fetches the user's latest subscription status directly from Stripe and persists it locally.
-/// Called by the frontend after payment confirmation to avoid relying on webhook timing.
+/// Fetches the user's latest subscription status directly from Stripe, persists it locally,
+/// and evicts the subscription cache. Called by the frontend after payment confirmation
+/// so access is granted immediately without waiting for the webhook or cache TTL.
 /// </summary>
 public class SyncSubscriptionHandler(
     ISubscriptionRepository subscriptions,
     IStripeService stripe,
+    ICacheService cache,
     IUnitOfWork uow,
     ILogger<SyncSubscriptionHandler> logger)
     : IHandler<SyncSubscriptionCommand, Result<SyncSubscriptionResponse>>
@@ -25,9 +28,12 @@ public class SyncSubscriptionHandler(
         if (sub is null)
             return Result.Failure<SyncSubscriptionResponse>("No subscription found.");
 
-        // Simulated subscription — no Stripe call needed.
+        // Simulated subscription — no Stripe call needed, but still bust the cache.
         if (sub.StripeSubscriptionId.StartsWith("sim_"))
+        {
+            await cache.RemoveAsync(CacheKeys.UserSubscription(cmd.UserId), ct);
             return Result.Success(new SyncSubscriptionResponse(sub.Status.ToString(), sub.GrantsAccess()));
+        }
 
         try
         {
@@ -44,6 +50,9 @@ public class SyncSubscriptionHandler(
 
             subscriptions.Update(sub);
             await uow.CommitAsync(ct);
+
+            // Evict cache so next GET /api/subscriptions/current returns fresh Active status.
+            await cache.RemoveAsync(CacheKeys.UserSubscription(cmd.UserId), ct);
 
             logger.LogInformation("Synced subscription {SubId} → {Status} for user {UserId}",
                 sub.StripeSubscriptionId, status, cmd.UserId);

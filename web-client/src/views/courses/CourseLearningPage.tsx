@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useCourse } from '../../hooks/useCourses'
 import { useMyEnrolledCourseIds, useEnrollmentForCourse, useEnrollmentProgress, useIssueCertificate, useEnrollmentCertificate } from '../../hooks/useEnrollments'
+import { useSubscription } from '../../hooks/useSubscription'
 import { useAuthStore } from '../../store/authStore'
 import Header from '../../components/layout/Header'
 import Spinner from '../../components/ui/Spinner'
@@ -31,6 +32,7 @@ export default function CourseLearningPage() {
   const { data: enrolledIds, isLoading: enrollLoading } = useMyEnrolledCourseIds()
   const { data: enrollment } = useEnrollmentForCourse(courseId ?? '')
   const { data: progress } = useEnrollmentProgress(enrollment?.enrollmentId)
+  const { data: subscription, isLoading: subLoading } = useSubscription()
 
   const [activeLesson, setActiveLesson] = useState<LessonDetail | null>(null)
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set())
@@ -127,7 +129,18 @@ export default function CourseLearningPage() {
     if (hlsRef.current) hlsRef.current.currentLevel = levelIndex
   }
 
-  if (courseLoading || enrollLoading) {
+  if (courseLoading || enrollLoading || subLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center h-96"><Spinner size="lg" /></div>
+      </div>
+    )
+  }
+
+  // Gate: paid courses require active subscription even if enrolled.
+  if (course && !course.isFree && !subscription?.grantsAccess) {
+    router.replace(`/courses/${courseId}`)
     return (
       <div className="min-h-screen bg-background">
         <Header />

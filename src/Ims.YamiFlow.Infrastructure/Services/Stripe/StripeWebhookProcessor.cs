@@ -1,6 +1,6 @@
+using Ims.YamiFlow.Application.Common;
 using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Enums;
-
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Domain.Interfaces.Services;
 using Microsoft.Extensions.Logging;
@@ -27,6 +27,7 @@ public class StripeWebhookProcessor(
     ISubscriptionRepository subscriptions,
     ISubscriptionPlanRepository plans,
     IPaymentRepository payments,
+    ICacheService cache,
     IUnitOfWork uow,
     ILogger<StripeWebhookProcessor> logger)
     : IStripeWebhookProcessor
@@ -148,6 +149,9 @@ public class StripeWebhookProcessor(
             stripeSub.TrialEnd,
             planId);
         subscriptions.Update(local);
+
+        // Bust the subscription cache so the next GET /current reflects the new status immediately.
+        await cache.RemoveAsync(CacheKeys.UserSubscription(local.UserId), ct);
     }
 
     private async Task HandleInvoicePaidAsync(Invoice invoice, CancellationToken ct)
