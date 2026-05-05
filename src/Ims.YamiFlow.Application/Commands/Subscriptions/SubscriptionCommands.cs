@@ -117,41 +117,33 @@ public class SubscribeHandler(
             cmd.UserId, user.Email, user.FullName, stripeCustomerId, ct);
         await customerService.SetStripeCustomerIdAsync(cmd.UserId, stripeCustomerId, ct);
 
-        // Check for stale incomplete subscription — cancel it so we get a fresh PaymentIntent.
-        // Stripe returns the same sub/PI via idempotency key even after PI reaches terminal state.
+        // Always cancel any stale incomplete subscription — a canceled/succeeded PI still has a clientSecret
+        // in the Stripe API response, so checking ClientSecret == null is not a reliable terminal indicator.
         var staleIncomplete = await subscriptions.GetIncompleteByUserAndPlanAsync(cmd.UserId, cmd.PlanId, ct);
         if (staleIncomplete is not null)
         {
             try
             {
-                var stripeSub = await stripe.GetSubscriptionAsync(staleIncomplete.StripeSubscriptionId, ct);
-                var stripeStatus = stripeSub.Status;
-                bool piTerminal = stripeSub.ClientSecret is null;
-
-                if (stripeStatus is "incomplete_expired" or "canceled" || piTerminal)
+                var stripeStatus = (await stripe.GetSubscriptionAsync(staleIncomplete.StripeSubscriptionId, ct)).Status;
+                if (stripeStatus is not "canceled" and not "incomplete_expired")
                 {
                     logger.LogInformation("Cancelling stale incomplete Stripe subscription {SubId} for user {UserId}",
                         staleIncomplete.StripeSubscriptionId, cmd.UserId);
-                    if (stripeStatus is not "canceled" and not "incomplete_expired")
-                        await stripe.CancelSubscriptionAsync(staleIncomplete.StripeSubscriptionId, atPeriodEnd: false, ct);
-                    staleIncomplete.MarkCanceled();
-                    subscriptions.Update(staleIncomplete);
-                    await uow.CommitAsync(ct);
-                    staleIncomplete = null;
+                    await stripe.CancelSubscriptionAsync(staleIncomplete.StripeSubscriptionId, atPeriodEnd: false, ct);
                 }
             }
             catch (Domain.Exceptions.PaymentException ex)
             {
-                logger.LogWarning(ex, "Could not fetch stale Stripe subscription {SubId}, proceeding with fresh attempt.",
+                logger.LogWarning(ex, "Could not cancel stale Stripe subscription {SubId}, proceeding with fresh attempt.",
                     staleIncomplete.StripeSubscriptionId);
-                staleIncomplete = null;
             }
+            staleIncomplete.MarkCanceled();
+            subscriptions.Update(staleIncomplete);
+            await uow.CommitAsync(ct);
         }
 
-        // Unique idempotency key per attempt — stale ones are cancelled above, new attempt uses fresh key.
-        var idempotencyKey = staleIncomplete is null
-            ? $"sub-{cmd.UserId}-{cmd.PlanId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 3600}"
-            : $"sub-{cmd.UserId}-{cmd.PlanId}";
+        // Always use fresh hourly-bucketed key — guarantees a new PaymentIntent every attempt.
+        var idempotencyKey = $"sub-{cmd.UserId}-{cmd.PlanId}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 3600}";
 
         StripeSubscriptionResult stripeResult;
         try
