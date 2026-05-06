@@ -1,4 +1,5 @@
 using FluentValidation;
+using Ims.YamiFlow.Domain.Entities;
 using Ims.YamiFlow.Domain.Enums;
 using Ims.YamiFlow.Domain.Interfaces.Repositories;
 using Ims.YamiFlow.Domain.Interfaces.Services;
@@ -32,6 +33,7 @@ public class SubscribeHandler(
     IAuthUserService users,
     IStripeService stripe,
     IUserStripeCustomerService customerService,
+    IPaymentRepository payments,
     IUnitOfWork uow,
     ILogger<SubscribeHandler> logger)
     : IHandler<SubscribeCommand, Result<SubscribeResponse>>
@@ -69,6 +71,12 @@ public class SubscribeHandler(
                     canceledAt: null,
                     trialEnd: null);
                 await subscriptions.AddAsync(switchSimSub, ct);
+                var switchSimPayment = Payment.Create(
+                    cmd.UserId, switchSimSub.Id, existing.StripeCustomerId,
+                    $"sim_in_{Guid.NewGuid():N}", null,
+                    plan.Amount, plan.Currency, PaymentStatus.Paid);
+                switchSimPayment.MarkPaid(null);
+                await payments.AddAsync(switchSimPayment, ct);
                 await uow.CommitAsync(ct);
                 logger.LogInformation("Simulated plan switch to {PlanId} for user {UserId}", plan.Id, cmd.UserId);
                 return Result.Success(new SubscribeResponse(switchSimSub.Id, switchSimSubId, "active", null, null));
@@ -107,6 +115,12 @@ public class SubscribeHandler(
                 canceledAt: null,
                 trialEnd: null);
             await subscriptions.AddAsync(simSub, ct);
+            var simPayment = Payment.Create(
+                cmd.UserId, simSub.Id, simCusId,
+                $"sim_in_{Guid.NewGuid():N}", null,
+                plan.Amount, plan.Currency, PaymentStatus.Paid);
+            simPayment.MarkPaid(null);
+            await payments.AddAsync(simPayment, ct);
             await uow.CommitAsync(ct);
             logger.LogInformation("Simulated subscription {SubId} for user {UserId}", simSubId, cmd.UserId);
             return Result.Success(new SubscribeResponse(simSub.Id, simSubId, "active", null, null));
