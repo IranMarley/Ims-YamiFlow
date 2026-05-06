@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '../../lib/publicApi'
 import { BASE_URL } from '../../lib/axios'
 import PublicHeader from '../../components/layout/PublicHeader'
+import useRedirectIfAuthenticated from '../../hooks/useAuthRedirect'
 import type { Course, PagedResult } from '../../types/course'
 
 // ── Mappings ─────────────────────────────────────────────
@@ -139,6 +140,7 @@ function CourseCardSkeleton() {
 // ── Landing ──────────────────────────────────────────────
 
 export default function LandingPage() {
+  useRedirectIfAuthenticated()
   const [level, setLevel] = useState<string | undefined>(undefined)
   const { data, isLoading } = usePublicCourses({ level, pageSize: 6 })
 
