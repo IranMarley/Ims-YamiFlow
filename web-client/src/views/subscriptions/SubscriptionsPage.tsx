@@ -8,6 +8,7 @@ import Spinner from '../../components/ui/Spinner'
 import {
   usePlans,
   useSubscription,
+  useSubscribe,
   useCancelSubscription,
   useResumeSubscription,
 } from '../../hooks/useSubscription'
@@ -92,6 +93,59 @@ function StatusBadge({ status, cancelAtPeriodEnd }: { status: string; cancelAtPe
       <span className={`w-1.5 h-1.5 rounded-full ${dotColors[key] ?? 'bg-subtle'}`} />
       {cfg.label}
     </span>
+  )
+}
+
+// ── Switch plan confirmation modal ────────────────────
+
+function SwitchPlanModal({
+  from,
+  to,
+  onConfirm,
+  onClose,
+  loading,
+}: {
+  from: string
+  to: SubscriptionPlan
+  onConfirm: () => void
+  onClose: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-md bg-surface border border-border rounded-2xl p-6 shadow-2xl">
+        <div className="flex items-start gap-4 mb-5">
+          <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-text">Switch plan?</h2>
+            <p className="text-sm text-subtle mt-1">
+              You will switch from <span className="text-text font-medium">{from}</span> to{' '}
+              <span className="text-text font-medium">{to.name}</span>. Billing will be adjusted pro-rata.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-background/60 border border-border rounded-xl p-3 mb-5 text-xs text-subtle space-y-1">
+          <p>• Change takes effect immediately</p>
+          <p>• Stripe calculates the pro-rata credit automatically</p>
+          <p>• Your access continues uninterrupted</p>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            Keep current plan
+          </Button>
+          <Button variant="primary" onClick={onConfirm} loading={loading}>
+            Switch to {to.name}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -312,13 +366,30 @@ export default function SubscriptionsPage() {
   const { data: current, isLoading: currentLoading } = useSubscription()
   const cancel = useCancelSubscription()
   const resume = useResumeSubscription()
+  const subscribe = useSubscribe()
 
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [switchTarget, setSwitchTarget] = useState<SubscriptionPlan | null>(null)
 
   const hasActive = !!(current?.grantsAccess)
 
   const handleSubscribe = (plan: SubscriptionPlan) => {
-    router.push(`/subscription/checkout?planId=${plan.id}`)
+    if (hasActive) {
+      setSwitchTarget(plan)
+    } else {
+      router.push(`/subscription/checkout?planId=${plan.id}`)
+    }
+  }
+
+  const handleConfirmSwitch = async () => {
+    if (!switchTarget) return
+    try {
+      await subscribe.mutateAsync(switchTarget.id)
+      setSwitchTarget(null)
+      toast.success(`Switched to ${switchTarget.name} successfully.`)
+    } catch {
+      toast.error('Failed to switch plan. Please try again.')
+    }
   }
 
   const handleConfirmCancel = async () => {
@@ -353,6 +424,16 @@ export default function SubscriptionsPage() {
           onConfirm={handleConfirmCancel}
           onClose={() => setShowCancelModal(false)}
           loading={cancel.isPending}
+        />
+      )}
+
+      {switchTarget && current && (
+        <SwitchPlanModal
+          from={current.planName}
+          to={switchTarget}
+          onConfirm={handleConfirmSwitch}
+          onClose={() => setSwitchTarget(null)}
+          loading={subscribe.isPending}
         />
       )}
 
@@ -396,7 +477,7 @@ export default function SubscriptionsPage() {
                       isCurrent={current?.planId === plan.id && !!current.grantsAccess}
                       hasActive={hasActive}
                       onSubscribe={() => handleSubscribe(plan)}
-                      subscribing={false}
+                      subscribing={subscribe.isPending && switchTarget?.id === plan.id}
                     />
                   ))}
                 </div>

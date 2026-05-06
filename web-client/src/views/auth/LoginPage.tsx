@@ -147,7 +147,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <GoogleLoginButton />
+          <GoogleLoginButton redirectTo={redirectTo} />
 
           <p className="mt-6 text-center text-sm text-subtle">
             Don&apos;t have an account?{' '}
